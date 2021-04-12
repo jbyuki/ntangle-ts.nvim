@@ -17,9 +17,9 @@ if backbuf[buf] then
   @convert_line_number_to_untangled
   if lookup[line+1] then
     local tline = line
-    local line = lookup[line+1]-1
+    local line, indent = unpack(lookup[line+1])
+    line = line - 1
     local self = hler
-    @highlight_current_line_test
     @reset_highlight_state
     @highlight_from_backbuf
   else
@@ -138,3 +138,7 @@ self.tree:for_each_tree(function(tstree, tree)
     end
   end
 end, true)
+
+@shift_column_to_tangled+=
+start_col = start_col - indent
+end_col = end_col - indent

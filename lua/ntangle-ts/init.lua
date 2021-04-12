@@ -59,15 +59,9 @@ function M._on_line(...)
     
     if lookup[line+1] then
       local tline = line
-      local line = lookup[line+1]-1
+      local line, indent = unpack(lookup[line+1])
+      line = line - 1
       local self = hler
-      vim.api.nvim_buf_set_extmark(buf, ns, line, 0,{ 
-        end_col = 3,
-        hl_group = "Search",
-        ephemeral = true,
-        priority = 100 -- Low but leaves room below
-      })
-      
       self:reset_highlight_state()
       
       self.tree:for_each_tree(function(tstree, tree)
@@ -94,6 +88,8 @@ function M._on_line(...)
           local start_row, start_col, end_row, end_col = node:range()
           local hl = highlighter_query.hl_cache[capture]
       
+          start_col = start_col - indent
+          end_col = end_col - indent
       
           if hl and start_row == line and end_row == line then
             vim.api.nvim_buf_set_extmark(buf, ns, tline, start_col,

@@ -90,6 +90,7 @@ function M._on_line(...)
       
           start_col = start_col - indent
           end_col = end_col - indent
+          
       
           if hl and start_row == line and end_row == line then
             vim.api.nvim_buf_set_extmark(buf, ns, tline, start_col,
@@ -106,6 +107,14 @@ function M._on_line(...)
       end, true)
       
     else
+      local curline = vim.api.nvim_buf_get_lines(buf, line, line+1, true)[1]
+      
+      vim.api.nvim_buf_set_extmark(buf, ns, line, 0, { 
+          end_line = tline, end_col = string.len(curline),
+          hl_group = "String",
+          ephemeral = true,
+          priority = 100 -- Low but leaves room below
+      })
     end
   
   -- @test_override
@@ -121,9 +130,9 @@ function M.override()
   
   print("override!")
   vim.api.nvim_set_decoration_provider(ns, {
-    on_buf = function(...) print("buf") highlighter._on_buf(...) end,
+    on_buf = highlighter._on_buf,
     on_line = M._on_line,
-    on_win = function(...) print("wiwin") highlighter._on_win(...) end,
+    on_win = highlighter._on_win,
   })
 end
 

@@ -81,64 +81,16 @@ local lookup = backlookup[unbuf]
 @reset_highlight_state+=
 self:reset_highlight_state()
 
-@highlight_current_line_test+=
-vim.api.nvim_buf_set_extmark(buf, ns, line, 0,{ 
-  end_col = 3,
-  hl_group = "Search",
-  ephemeral = true,
-  priority = 100 -- Low but leaves room below
-})
-
-@test_override+=
-if backbuf[buf] then
-  local self = highlighter.active[buf]
-  -- @on_line_impl
-  @highlight_current_line_test
-
-@on_line_impl+=
-self.tree:for_each_tree(function(tstree, tree)
-  if not tstree then return end
-
-  local root_node = tstree:root()
-  local root_start_row, _, root_end_row, _ = root_node:range()
-
-  -- Only worry about trees within the line range
-  if root_start_row > line or root_end_row < line then return end
-
-  local state = self:get_highlight_state(tstree)
-  local highlighter_query = self:get_query(tree:lang())
-
-  -- Some injected languages may not have highlight queries.
-  if not highlighter_query:query() then return end
-
-  if state.iter == nil then
-    state.iter = highlighter_query:query():iter_captures(root_node, self.bufnr, line, root_end_row + 1)
-  end
-
-  while line >= state.next_row do
-    local capture, node = state.iter()
-
-    if capture == nil then break end
-
-    local start_row, start_col, end_row, end_col = node:range()
-    local hl = highlighter_query.hl_cache[capture]
-
-    if hl and end_row >= line then
-      -- vim.api.nvim_buf_set_extmark(buf, ns, start_row, start_col,
-                             -- { end_line = end_row, end_col = end_col,
-                               -- hl_group = hl,
-                               -- ephemeral = true,
-                               -- priority = 100 -- Low but leaves room below
-                              -- })
-
-      @highlight_current_line_test
-    end
-    if start_row > line then
-      state.next_row = start_row
-    end
-  end
-end, true)
-
 @shift_column_to_tangled+=
 start_col = start_col - indent
 end_col = end_col - indent
+
+@highlight_ntangle_lines+=
+local curline = vim.api.nvim_buf_get_lines(buf, line, line+1, true)[1]
+
+vim.api.nvim_buf_set_extmark(buf, ns, line, 0, { 
+    end_line = tline, end_col = string.len(curline),
+    hl_group = "String",
+    ephemeral = true,
+    priority = 100 -- Low but leaves room below
+})

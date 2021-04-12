@@ -18,7 +18,7 @@ ns = nss["treesitter/highlighter"]
 @override_treesitter_decoration_provider+=
 print("override!")
 vim.api.nvim_set_decoration_provider(ns, {
-  on_buf = highlighter._on_buf,
+  on_buf = function(...) print("buf") highlighter._on_buf(...) end,
   on_line = M._on_line,
-  on_win = highlighter._on_win,
+  on_win = function(...) print("wiwin") highlighter._on_win(...) end,
 })

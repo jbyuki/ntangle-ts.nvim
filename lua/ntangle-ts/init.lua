@@ -1,4 +1,4 @@
--- Generated from attach.lua.t, init.lua.t, on_line.lua.t, override_decoration_provider.lua.t using ntangle.nvim
+-- Generated from attach.lua.t, init.lua.t, on_buf.lua.t, on_line.lua.t, override_decoration_provider.lua.t using ntangle.nvim
 local ntangle = require"ntangle"
 
 local backlookup = {}
@@ -17,6 +17,7 @@ function M.attach()
     return
   end
   
+  -- @remove_buffer_highlighter
 
   local lookup = {}
   local bufs = {}
@@ -34,6 +35,10 @@ function M.attach()
   local ft = vim.api.nvim_buf_get_option(buf, "ft")
   local parser = vim.treesitter.get_parser(backbuf[buf], ft)
   highlighter.new(parser)
+  
+
+  print(buf)
+  print("backbuf " .. vim.inspect(backbuf))
 
   -- vim.api.nvim_buf_attach(buf, true, {
     -- on_bytes = function(...)
@@ -42,6 +47,8 @@ function M.attach()
   -- })
 end
 
+function M._on_buf(...)
+end
 function M._on_line(...)
   local _, _, buf, line = unpack({...})
   if backbuf[buf] then
@@ -49,10 +56,20 @@ function M._on_line(...)
     local hler = highlighter.active[unbuf]
     
     local lookup = backlookup[unbuf]
-    if lookup[line] then
+    
+    if lookup[line+1] then
       local tline = line
-      local line = lookup[line]
+      local line = lookup[line+1]-1
       local self = hler
+      vim.api.nvim_buf_set_extmark(buf, ns, line, 0,{ 
+        end_col = 3,
+        hl_group = "Search",
+        ephemeral = true,
+        priority = 100 -- Low but leaves room below
+      })
+      
+      self:reset_highlight_state()
+      
       self.tree:for_each_tree(function(tstree, tree)
         if not tstree then return end
       
@@ -95,6 +112,7 @@ function M._on_line(...)
     else
     end
   
+  -- @test_override
   else
     highlighter._on_line(...)
   end
@@ -107,9 +125,9 @@ function M.override()
   
   print("override!")
   vim.api.nvim_set_decoration_provider(ns, {
-    on_buf = highlighter._on_buf,
+    on_buf = function(...) print("buf") highlighter._on_buf(...) end,
     on_line = M._on_line,
-    on_win = highlighter._on_win,
+    on_win = function(...) print("wiwin") highlighter._on_win(...) end,
   })
 end
 

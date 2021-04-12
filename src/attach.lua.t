@@ -3,6 +3,7 @@
 function M.attach()
   @get_current_buffer
   @return_if_already_attached
+  -- @remove_buffer_highlighter
 
   local lookup = {}
   local bufs = {}
@@ -11,6 +12,9 @@ function M.attach()
   @fill_backbuf_if_not_done
   @fill_backlookup_if_not_done
   @if_no_highlighter_attached_to_buf_create
+
+  print(buf)
+  print("backbuf " .. vim.inspect(backbuf))
 
   -- vim.api.nvim_buf_attach(buf, true, {
     -- on_bytes = function(...)
@@ -50,3 +54,6 @@ end
 local ft = vim.api.nvim_buf_get_option(buf, "ft")
 local parser = vim.treesitter.get_parser(backbuf[buf], ft)
 highlighter.new(parser)
+
+@remove_buffer_highlighter+=
+highlighter.active[buf] = nil

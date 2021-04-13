@@ -12,6 +12,7 @@ local backbuf = {}
 
 @if_has_attach_override+=
 if backbuf[buf] then
+  print("line " .. line)
   if valid[buf] then
     local unbuf = backbuf[buf]
     @get_highlighter

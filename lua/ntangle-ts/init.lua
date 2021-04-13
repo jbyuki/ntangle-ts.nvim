@@ -52,8 +52,10 @@ function M.attach()
 
   vim.api.nvim_buf_attach(buf, true, {
     on_bytes = function(...)
+      print("on bytes")
       valid[buf] = false
       vim.schedule(function()
+        print("in schedule")
         lookup = ntangle.tangle_to_buf(bufs)
         
         valid[buf] = true
@@ -86,6 +88,7 @@ end
 function M._on_line(...)
   local _, _, buf, line = unpack({...})
   if backbuf[buf] then
+    print("line " .. line)
     if valid[buf] then
       local unbuf = backbuf[buf]
       local hler = highlighter.active[unbuf]

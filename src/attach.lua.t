@@ -22,8 +22,10 @@ function M.attach()
 
   vim.api.nvim_buf_attach(buf, true, {
     on_bytes = function(...)
+      print("on bytes")
       valid[buf] = false
       vim.schedule(function()
+        print("in schedule")
         @tangle_to_buffer
         valid[buf] = true
         @fill_backlookup_if_not_done

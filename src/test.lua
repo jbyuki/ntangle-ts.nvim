@@ -2,6 +2,7 @@
 function test()
   if true then
     print(b)
+
   @else_case
 end
 

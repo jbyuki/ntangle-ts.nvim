@@ -12,18 +12,23 @@ local backbuf = {}
 
 @if_has_attach_override+=
 if backbuf[buf] then
-  local unbuf = backbuf[buf]
-  @get_highlighter
-  @convert_line_number_to_untangled
-  if lookup[line+1] then
-    local tline = line
-    local line, indent = unpack(lookup[line+1])
-    line = line - 1
-    local self = hler
-    @reset_highlight_state
-    @highlight_from_backbuf
+  if valid[buf] then
+    print("line " .. line)
+    local unbuf = backbuf[buf]
+    @get_highlighter
+    @convert_line_number_to_untangled
+    if lookup[line+1] then
+      local tline = line
+      local line, indent = unpack(lookup[line+1])
+      line = line - 1
+      local self = hler
+      @reset_highlight_state
+      @highlight_from_backbuf
+    else
+      @highlight_ntangle_lines
+    end
   else
-    @highlight_ntangle_lines
+    @add_to_be_done_later
   end
 
 @otherwise_run_default_highlighter+=
@@ -94,3 +99,23 @@ vim.api.nvim_buf_set_extmark(buf, ns, line, 0, {
     ephemeral = true,
     priority = 100 -- Low but leaves room below
 })
+
+@script_variables+=
+local later = {}
+
+@add_to_be_done_later+=
+later[buf] = later[buf] or {}
+table.insert(later[buf], line)
+
+@redraw_everything_that_was_postponed+=
+if #later[buf] > 0 then
+  local start_row = later[buf][1]
+  local end_row = later[buf][1]
+  for _, row in ipairs(later[buf]) do
+    start_row = math.min(start_row, row)
+    end_row = math.max(end_row, row)
+  end
+
+  later[buf] = {}
+  vim.api.nvim__buf_redraw_range(buf, start_row, end_row+1)
+end

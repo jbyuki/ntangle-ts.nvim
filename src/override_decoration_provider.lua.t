@@ -20,5 +20,6 @@ print("override!")
 vim.api.nvim_set_decoration_provider(ns, {
   on_buf = highlighter._on_buf,
   on_line = M._on_line,
-  on_win = highlighter._on_win,
+  -- on_win = highlighter._on_win,
+  on_win = function(...) end,
 })

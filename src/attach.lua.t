@@ -1,9 +1,14 @@
 ##ntangle-ts
+@script_variables+=
+local valid = {}
+
 @implement+=
 function M.attach()
   @get_current_buffer
   @return_if_already_attached
-  -- @remove_buffer_highlighter
+  @remove_buffer_highlighter
+
+  @unregister_any_callback_from_buffer_highlighter
 
   local lookup = {}
   local bufs = {}
@@ -13,14 +18,19 @@ function M.attach()
   @fill_backlookup_if_not_done
   @if_no_highlighter_attached_to_buf_create
 
-  print(buf)
-  print("backbuf " .. vim.inspect(backbuf))
+  valid[buf] = true
 
-  -- vim.api.nvim_buf_attach(buf, true, {
-    -- on_bytes = function(...)
-      -- @tangle_to_buffer
-    -- end
-  -- })
+  vim.api.nvim_buf_attach(buf, true, {
+    on_bytes = function(...)
+      valid[buf] = false
+      vim.schedule(function()
+        @tangle_to_buffer
+        valid[buf] = true
+        @parse_everything_again
+        @redraw_everything_that_was_postponed
+      end)
+    end
+  })
 end
 
 @get_current_buffer+=
@@ -40,6 +50,7 @@ ntangle.tangle_to_buf(bufs, lookup)
 @fill_backbuf_if_not_done+=
 for _, unbuf in pairs(bufs) do
   backbuf[buf] = unbuf
+  print(unbuf)
 end
 
 @script_variables+=
@@ -57,3 +68,11 @@ highlighter.new(parser)
 
 @remove_buffer_highlighter+=
 highlighter.active[buf] = nil
+
+@unregister_any_callback_from_buffer_highlighter+=
+local parser = vim.treesitter.get_parser()
+parser._callbacks.changedtree = {}
+parser._callbacks.bytes = {}
+
+@parse_everything_again+=
+parser:parse()

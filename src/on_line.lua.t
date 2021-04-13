@@ -13,7 +13,6 @@ local backbuf = {}
 @if_has_attach_override+=
 if backbuf[buf] then
   if valid[buf] then
-    print("line " .. line)
     local unbuf = backbuf[buf]
     @get_highlighter
     @convert_line_number_to_untangled

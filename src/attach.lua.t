@@ -26,6 +26,7 @@ function M.attach()
       vim.schedule(function()
         @tangle_to_buffer
         valid[buf] = true
+        @fill_backlookup_if_not_done
         @parse_everything_again
         @redraw_everything_that_was_postponed
       end)
@@ -45,7 +46,7 @@ end
 local ntangle = require"ntangle"
 
 @tangle_to_buffer+=
-ntangle.tangle_to_buf(bufs, lookup)
+lookup = ntangle.tangle_to_buf(bufs)
 
 @fill_backbuf_if_not_done+=
 for _, unbuf in pairs(bufs) do

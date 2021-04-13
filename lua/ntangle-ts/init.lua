@@ -1,4 +1,4 @@
--- Generated from attach.lua.t, init.lua.t, on_buf.lua.t, on_line.lua.t, override_decoration_provider.lua.t using ntangle.nvim
+-- Generated from attach.lua.t, debug.lua.t, init.lua.t, on_buf.lua.t, on_line.lua.t, override_decoration_provider.lua.t using ntangle.nvim
 local valid = {}
 
 local ntangle = require"ntangle"
@@ -32,7 +32,7 @@ function M.attach()
   local lookup = {}
   local bufs = {}
 
-  ntangle.tangle_to_buf(bufs, lookup)
+  lookup = ntangle.tangle_to_buf(bufs)
   
   for _, unbuf in pairs(bufs) do
     backbuf[buf] = unbuf
@@ -54,9 +54,13 @@ function M.attach()
     on_bytes = function(...)
       valid[buf] = false
       vim.schedule(function()
-        ntangle.tangle_to_buf(bufs, lookup)
+        lookup = ntangle.tangle_to_buf(bufs)
         
         valid[buf] = true
+        for buf, l in pairs(lookup) do
+          backlookup[buf] = l
+        end
+        
         parser:parse()
         if #later[buf] > 0 then
           local start_row = later[buf][1]
@@ -74,13 +78,15 @@ function M.attach()
   })
 end
 
+function M.print_lookup()
+  print("backlookup " .. vim.inspect(backlookup))
+end
 function M._on_buf(...)
 end
 function M._on_line(...)
   local _, _, buf, line = unpack({...})
   if backbuf[buf] then
     if valid[buf] then
-      print("line " .. line)
       local unbuf = backbuf[buf]
       local hler = highlighter.active[unbuf]
       

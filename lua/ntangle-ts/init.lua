@@ -1,4 +1,4 @@
--- Generated from attach.lua.t, debug.lua.t, init.lua.t, on_buf.lua.t, on_line.lua.t, override_decoration_provider.lua.t using ntangle.nvim
+-- Generated from attach.lua.t, debug.lua.t, init.lua.t, on_buf.lua.t, on_line.lua.t, on_win.lua.t, override_decoration_provider.lua.t using ntangle.nvim
 local valid = {}
 
 local ntangle = require"ntangle"
@@ -165,6 +165,14 @@ function M._on_line(...)
   
 end
 
+function M._on_win(...)
+  if backbuf[buf] then
+    return true
+  else
+    highlighter._on_win(...)
+  end
+end
+
 function M.override()
   local nss = vim.api.nvim_get_namespaces()
   ns = nss["treesitter/highlighter"]
@@ -173,8 +181,7 @@ function M.override()
   vim.api.nvim_set_decoration_provider(ns, {
     on_buf = highlighter._on_buf,
     on_line = M._on_line,
-    -- on_win = highlighter._on_win,
-    on_win = function(...) end,
+    on_win = M._on_win,
   })
 end
 

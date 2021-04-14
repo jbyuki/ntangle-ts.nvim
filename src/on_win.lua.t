@@ -1,6 +1,11 @@
 ##ntangle-ts
+@script_variables+=
+local test_buf = vim.api.nvim_create_buf(false, true)
+print("created test buf " .. test_buf)
+
 @implement+=
 function M._on_win(...)
+  local _, _, buf, _ = unpack({...})
   if backbuf[buf] then
     return true
   else

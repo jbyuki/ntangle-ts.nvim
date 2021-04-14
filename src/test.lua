@@ -1,6 +1,6 @@
 @*=
 function test()
-  if true then
+  if false then
   @else_case
 end
 
@@ -9,33 +9,3 @@ else
   local a = 0
   print(a)
 end
-
-print(a)
-print(a)
-print(a)
-print(a)
-
-print(a)
-print(a)
-print(a)
-print(a)
-
-print(a)
-print(a)
-print(a)
-print(a)
-
-print(a)
-print(a)
-print(a)
-print(a)
-
-print(a)
-print(a)
-print(a)
-print(a)
-
-print(a)
-print(a)
-print(a)
-print(a)

@@ -57,4 +57,5 @@ Note: **Should work but not stable at all.**
 Improvements
 ------------
 
-* [ ] incremental tangling
+* [x] incremental tangling
+  incremental tangling can be used for a lot of other technologies such as LSP.

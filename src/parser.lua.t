@@ -9,9 +9,6 @@ local trees = {}
 local sources = {}
 
 @parse_everything_again+=
-local fn
-for fni, b in pairs(bufs) do fn = fni break end
-sources[buf] = table.concat(bufs[fn], "\n")
 trees[buf] = parser:parse(nil, sources[buf])
 
 @script_variables+=

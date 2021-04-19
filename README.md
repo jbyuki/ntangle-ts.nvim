@@ -58,4 +58,4 @@ Improvements
 ------------
 
 * [x] incremental tangling
-  incremental tangling can be used for a lot of other technologies such as LSP.
+* [ ] assemblies

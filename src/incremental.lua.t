@@ -17,8 +17,6 @@ for i=0,linecount-1 do
   @otherwise_inserted_line_is_text
 end
 
-@display_tangle_output_detail
-
 -- @fill_output_buf
 -- @display_tangle_output
 
@@ -40,7 +38,8 @@ end
 @search_untangled_node_insert
 @add_lines_incremental
 
--- @fill_output_buf
+@display_tangle_output
+-- @display_untangle_output
 
 @script_variables+=
 local tangleRec
@@ -159,40 +158,41 @@ after_this = linkedlist.insert_after(tangled_ll, after_this, l)
 @search_untangled_node_delete+=
 local delete_this = start_buf.next
 for _=1,firstline do
-delete_this = delete_this.next
+  delete_this = delete_this.next
 end
 
 @delete_lines_incremental+=
 for _=firstline,lastline-1 do
-local cur_delete = delete_this
-if not cur_delete then break end
-delete_this = delete_this.next
+  local cur_delete = delete_this
+  if not cur_delete then break end
+  delete_this = delete_this.next
 
-@check_if_deleted_line_is_section
-@check_if_deleted_line_is_reference
-@otherwise_deleted_line_is_text
+  @check_if_deleted_line_is_section
+  @check_if_deleted_line_is_reference
+  @check_if_deleted_line_is_assembly
+  @otherwise_deleted_line_is_text
 
-@remove_in_untangled
+  @remove_in_untangled
 end
 
 @check_if_deleted_line_is_section+=
 if cur_delete.data.linetype == LineType.SECTION then
-local insert_after = cur_delete
-@remove_sentinel_or_bisentinel
-@remove_lines_after_section_in_untangled_in_tangled
-@remove_section_from_sections
-@remove_in_untangled
-@add_lines_back_to_section
-cur_delete = nil
+  local insert_after = cur_delete
+  @remove_sentinel_or_bisentinel
+  @remove_lines_after_section_in_untangled_in_tangled
+  @remove_section_from_sections
+  @remove_in_untangled
+  @add_lines_back_to_section
+  cur_delete = nil
 
 @remove_sentinel_or_bisentinel+=
 if cur_delete.data.op == "=" then
-@remove_bisentinel
-@remove_from_roots
+  @remove_bisentinel
+  @remove_from_roots
 else
-for _, ref in ipairs(cur_delete.data.tangled) do
-  linkedlist.remove(tangled_ll, ref)
-end
+  for _, ref in ipairs(cur_delete.data.tangled) do
+    linkedlist.remove(tangled_ll, ref)
+  end
 end
 
 @remove_bisentinel+=
@@ -204,54 +204,62 @@ root_set[cur_delete.data.str] = nil
 
 @check_if_deleted_line_is_reference+=
 elseif cur_delete.data.linetype == LineType.REFERENCE then
-for _, ref in ipairs(cur_delete.data.tangled) do
-  local ref_start, ref_end = unpack(ref)
-  local copy = ref_start
-  local quit = false
-  while copy and not quit do
-    if copy == ref_end then quit = true end
-    local to_delete = copy
-    @remove_reference_to_tangled_node
-    linkedlist.remove(tangled_ll, to_delete)
-    copy = copy.next
+  for _, ref in ipairs(cur_delete.data.tangled) do
+    local ref_start, ref_end = unpack(ref)
+    local copy = ref_start
+    local quit = false
+    while copy and not quit do
+      if copy == ref_end then quit = true end
+      local to_delete = copy
+      @remove_reference_to_tangled_node
+      linkedlist.remove(tangled_ll, to_delete)
+      copy = copy.next
+    end
   end
-end
 
 @remove_reference_to_tangled_node+=
 local untangled = to_delete.data.untangled
 if not untangled then
-print("Something went south.")
+  print("Something went south.")
 elseif untangled.data.linetype == LineType.TEXT then
-untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
+  untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
 elseif untangled.data.linetype == LineType.REFERENCE then
-untangled.data.tangled = vim.tbl_filter(function(x) return x[1] ~= to_delete and x[2] ~= to_delete end, untangled.data.tangled)
+  untangled.data.tangled = vim.tbl_filter(function(x) return x[1] ~= to_delete and x[2] ~= to_delete end, untangled.data.tangled)
 elseif untangled.data.linetype == LineType.SECTION then
-untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
+  untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
 end
 
 @otherwise_deleted_line_is_text+=
 else
-@remove_text_in_tangled
+  @remove_text_in_tangled
 end
 
 @remove_text_in_tangled+=
 if cur_delete.data.tangled then
-for _, ref in ipairs(cur_delete.data.tangled) do
-  linkedlist.remove(tangled_ll, ref)
-end
+  for _, ref in ipairs(cur_delete.data.tangled) do
+    linkedlist.remove(tangled_ll, ref)
+  end
 end
 
 @remove_section_from_sections+=
 if sections_ll[cur_delete.data.str] then
-linkedlist.remove(sections_ll[cur_delete.data.str], cur_delete)
-if linkedlist.get_size(sections_ll[cur_delete.data.str]) == 0 then
-  sections_ll[cur_delete.data.str] = nil
-end
+  local it = sections_ll[cur_delete.data.str].head
+  while it do
+    if it.data == cur_delete then
+      linkedlist.remove(sections_ll[cur_delete.data.str], it)
+      break
+    end
+    it = it.next
+  end
+
+  if linkedlist.get_size(sections_ll[cur_delete.data.str]) == 0 then
+    sections_ll[cur_delete.data.str] = nil
+  end
 end
 
 @remove_in_untangled+=
 if cur_delete then
-linkedlist.remove(untangled_ll, cur_delete)
+  linkedlist.remove(untangled_ll, cur_delete)
 end
 
 @add_lines_incremental+=
@@ -260,6 +268,7 @@ for i=firstline,new_lastline-1 do
 
   @check_if_inserted_line_is_section
   @check_if_inserted_line_is_reference
+  @check_if_inserted_line_is_assembly
   @otherwise_inserted_line_is_text
 end
 
@@ -387,6 +396,7 @@ if op == "=" then
   l.tangled = { start_file }
   l.extra_tangled = end_file
   root_set[l.str] = insert_after
+
 end
 
 @remove_lines_after_section_in_untangled_in_tangled+=
@@ -415,7 +425,6 @@ end
 elseif it.data.linetype == LineType.REFERENCE then
   local l = it.data
   @get_all_tangled_node
-  local name = it.data.str
   @add_reference_to_all_tangled
 
 @otherwise_text_insert_back+=
@@ -544,6 +553,7 @@ TEXT = 2,
 SECTION = 3,
 
 @display_tangle_output+=
+print("TANGLED")
 for line in linkedlist.iter(tangled_ll) do
   if line.linetype == LineType.TANGLED then
     print(line.line)

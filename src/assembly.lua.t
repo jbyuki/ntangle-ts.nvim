@@ -9,7 +9,7 @@ elseif i == 0 and string.match(line, "^##%S+$") then
   @retrieve_new_namespace
   @place_sentinel_in_new_namespace
   @transfer_untangled_to_new_namespace
-  @generate_tangled_new_namespace
+  @generate_tangled_new_namespace_insert
 
 @get_assembly_name+=
 local name = string.match(line, "^##(%S*)%s*$")
@@ -89,10 +89,16 @@ while delete_this ~= end_buf do
   if not cur_delete then break end
   delete_this = delete_this.next
 
-  @check_if_deleted_line_is_section
+  @check_if_deleted_line_is_section_without_delete_untangled
   @check_if_deleted_line_is_reference
   @otherwise_deleted_line_is_text
 end
+
+@check_if_deleted_line_is_section_without_delete_untangled+=
+if cur_delete.data.linetype == LineType.SECTION then
+  local insert_after = cur_delete
+  @remove_sentinel_or_bisentinel
+  @remove_section_from_sections
 
 @retrieve_new_namespace+=
 local old_untangled_ll = untangled_ll
@@ -108,8 +114,10 @@ sections_ll = asm_namespaces[name].sections_ll
 tangled_ll = asm_namespaces[name].tangled_ll
 root_set = asm_namespaces[name].root_set
 parts_ll = asm_namespaces[name].parts_ll
+buf_asm = name
 
-if check_links then
+
+if type(name) ~= "number" and check_links then
   @check_if_there_are_links
   @read_all_links_except_current
 end
@@ -269,11 +277,31 @@ end_buf = new_end_buf
 
 insert_after = start_buf.next
 
-@generate_tangled_new_namespace+=
+@generate_tangled_new_namespace_insert+=
 do
-  local insert_after = start_buf
-  @add_lines_back_to_section
+  local it = start_buf.next.next
+  while it ~= end_buf do
+    local insert_after = it.prev
+    if it.data.linetype == LineType.ASSEMBLY then
+    @check_if_section_insert_back
+    @check_if_reference_insert_back
+    @otherwise_text_insert_back
+    it = it.next
+  end
 end
+
+@check_if_section_insert_back+=
+elseif it.data.linetype == LineType.SECTION then
+  local l = it.data
+  local insert_after = it
+  local op = l.op
+  local name = l.str
+  @insert_entry_to_sections
+  @find_preceding_section_for_operator
+  @if_none_find_all_references
+  @insert_sentinel_for_section
+
+  @if_root_section_add_bisentinels
 
 @line_types+=
 ASSEMBLY = 6,
@@ -289,3 +317,19 @@ local l = {
 
 @append_assembly_to_untangled+=
 insert_after = linkedlist.insert_after(untangled_ll, start_buf, l)
+
+@check_if_deleted_line_is_assembly+=
+elseif cur_delete == start_buf.next and cur_delete.data.linetype == LineType.ASSEMBLY then
+  @if_has_namespace_delete_tangled
+  local name = buf
+  asm_namespaces[buf] = nil
+  @retrieve_new_namespace
+  @place_sentinel_in_new_namespace
+  @transfer_untangled_to_new_namespace
+  @generate_tangled_new_namespace_insert
+
+@display_roots+=
+print("ROOTS")
+for name,_ in pairs(root_set) do
+  print(name)
+end

@@ -61,6 +61,9 @@ function linkedlist.insert_after(list, it, el)
 end
 
 @insert_el_in_head_after+=
+if not list then
+  print(debug.traceback())
+end
 node.next = list.head
 if list.head then
   list.head.prev = node

@@ -7,6 +7,9 @@ function M.attach()
   local lookup = {}
   local bufs = {}
 
+
+  @buffer_variables
+
   @init_incremental_tangling
   @update_line_number_untangled
   @fill_lookup_table

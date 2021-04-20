@@ -2130,6 +2130,7 @@ function M.attach()
             end
           end
           
+          cur_delete = start_buf.next
         
         else
           if cur_delete.data.tangled then

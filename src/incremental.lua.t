@@ -561,8 +561,9 @@ for line in linkedlist.iter(tangled_ll) do
 end
 
 @display_untangle_output+=
+print("UNTANGLED")
 for line in linkedlist.iter(untangled_ll) do
-  print(getLinetype(line.linetype) .. " " .. vim.inspect(line.line))
+  print(getLinetype(line.linetype) .. " " .. vim.inspect(line.str))
 end
 
 @display_tangle_output_detail+=

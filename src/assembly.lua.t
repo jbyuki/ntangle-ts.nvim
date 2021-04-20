@@ -327,6 +327,7 @@ elseif cur_delete == start_buf.next and cur_delete.data.linetype == LineType.ASS
   @place_sentinel_in_new_namespace
   @transfer_untangled_to_new_namespace
   @generate_tangled_new_namespace_insert
+  cur_delete = start_buf.next
 
 @display_roots+=
 print("ROOTS")

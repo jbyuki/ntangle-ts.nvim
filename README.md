@@ -62,4 +62,4 @@ Improvements
 ------------
 
 * [x] incremental tangling
-* [ ] assemblies
+* [x] assemblies

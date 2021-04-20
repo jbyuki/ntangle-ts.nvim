@@ -255,6 +255,7 @@ function M.attach()
           break
         elseif it.data.linetype == LineType.REFERENCE then
           local l = it.data
+          local name = l.str
           local tangled = {}
           if insert_after then
             if insert_after.data.linetype == LineType.TEXT then
@@ -687,6 +688,7 @@ function M.attach()
         		          break
         		        elseif it.data.linetype == LineType.REFERENCE then
         		          local l = it.data
+        		          local name = l.str
         		          local tangled = {}
         		          if insert_after then
         		            if insert_after.data.linetype == LineType.TEXT then
@@ -1048,6 +1050,7 @@ function M.attach()
           
           elseif it.data.linetype == LineType.REFERENCE then
             local l = it.data
+            local name = l.str
             local tangled = {}
             if insert_after then
               if insert_after.data.linetype == LineType.TEXT then
@@ -1297,6 +1300,7 @@ function M.attach()
               break
             elseif it.data.linetype == LineType.REFERENCE then
               local l = it.data
+              local name = l.str
               local tangled = {}
               if insert_after then
                 if insert_after.data.linetype == LineType.TEXT then
@@ -1695,6 +1699,7 @@ function M.attach()
             		          break
             		        elseif it.data.linetype == LineType.REFERENCE then
             		          local l = it.data
+            		          local name = l.str
             		          local tangled = {}
             		          if insert_after then
             		            if insert_after.data.linetype == LineType.TEXT then
@@ -2056,6 +2061,7 @@ function M.attach()
               
               elseif it.data.linetype == LineType.REFERENCE then
                 local l = it.data
+                local name = l.str
                 local tangled = {}
                 if insert_after then
                   if insert_after.data.linetype == LineType.TEXT then
@@ -2148,7 +2154,6 @@ function M.attach()
       
       for i=firstline,new_lastline-1 do
         local line = vim.api.nvim_buf_get_lines(buf, i, i+1, true)[1]
-      
         if string.match(line, "^@[^@]%S*[+-]?=%s*$") then
           local _, _, name, op = string.find(line, "^@(%S-)([+-]?=)%s*$")
           
@@ -2310,6 +2315,7 @@ function M.attach()
               break
             elseif it.data.linetype == LineType.REFERENCE then
               local l = it.data
+              local name = l.str
               local tangled = {}
               if insert_after then
                 if insert_after.data.linetype == LineType.TEXT then
@@ -2742,6 +2748,7 @@ function M.attach()
             		          break
             		        elseif it.data.linetype == LineType.REFERENCE then
             		          local l = it.data
+            		          local name = l.str
             		          local tangled = {}
             		          if insert_after then
             		            if insert_after.data.linetype == LineType.TEXT then
@@ -3103,6 +3110,7 @@ function M.attach()
               
               elseif it.data.linetype == LineType.REFERENCE then
                 local l = it.data
+                local name = l.str
                 local tangled = {}
                 if insert_after then
                   if insert_after.data.linetype == LineType.TEXT then

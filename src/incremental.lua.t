@@ -265,7 +265,6 @@ end
 @add_lines_incremental+=
 for i=firstline,new_lastline-1 do
   local line = vim.api.nvim_buf_get_lines(buf, i, i+1, true)[1]
-
   @check_if_inserted_line_is_section
   @check_if_inserted_line_is_reference
   @check_if_inserted_line_is_assembly
@@ -424,6 +423,7 @@ end
 @check_if_reference_insert_back+=
 elseif it.data.linetype == LineType.REFERENCE then
   local l = it.data
+  local name = l.str
   @get_all_tangled_node
   @add_reference_to_all_tangled
 

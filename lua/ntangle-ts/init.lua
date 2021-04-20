@@ -1162,6 +1162,9 @@ function M.attach()
     
   end
   
+  for line in linkedlist.iter(tangled_ll) do
+    print(getLinetype(line.linetype) .. " " .. vim.inspect(line.line))
+  end
   
   -- @fill_output_buf
   -- @display_tangle_output

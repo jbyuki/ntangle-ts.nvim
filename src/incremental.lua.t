@@ -17,6 +17,7 @@ for i=0,linecount-1 do
   @otherwise_inserted_line_is_text
 end
 
+@display_tangle_output_detail
 
 -- @fill_output_buf
 -- @display_tangle_output

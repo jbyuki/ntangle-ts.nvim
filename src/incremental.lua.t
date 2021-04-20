@@ -11,26 +11,26 @@ local linecount = vim.api.nvim_buf_line_count(buf)
 local insert_after = start_buf
 for i=0,linecount-1 do
   local line = vim.api.nvim_buf_get_lines(buf, i, i+1, true)[1]
-
   @check_if_inserted_line_is_section
   @check_if_inserted_line_is_reference
   @check_if_inserted_line_is_assembly
   @otherwise_inserted_line_is_text
 end
 
+
 -- @fill_output_buf
-@display_tangle_output
+-- @display_tangle_output
 
 @script_variables+=
 local getLinetype
 
 @implement+=
 function getLinetype(linetype)
-if linetype == LineType.TEXT then return "TEXT"
-elseif linetype == LineType.REFERENCE then return "REFERENCE"
-elseif linetype == LineType.SECTION then return "SECTION"
-@print_linetypes
-end
+  if linetype == LineType.TEXT then return "TEXT"
+  elseif linetype == LineType.REFERENCE then return "REFERENCE"
+  elseif linetype == LineType.SECTION then return "SECTION"
+  @print_linetypes
+  end
 end
 
 @call_ntangle_incremental+=
@@ -54,101 +54,102 @@ elseif linetype == LineType.SENTINEL then return "SENTINEL"
 
 @implement+=
 function tangleRec(name, sections_ll, tangled_ll, tangled_it, prefix, stack)
-local start_node = linkedlist.insert_after(tangled_ll, tangled_it, { 
-  linetype = LineType.SENTINEL, 
-  prefix = prefix, 
-  line = "start " .. name 
-})
+  local start_node = linkedlist.insert_after(tangled_ll, tangled_it, { 
+    linetype = LineType.SENTINEL, 
+    prefix = prefix, 
+    line = "start " .. name 
+  })
 
-tangled_it = start_node 
+  tangled_it = start_node 
 
-local end_node = linkedlist.insert_after(tangled_ll, tangled_it, { 
-  linetype = LineType.SENTINEL, 
-  prefix = prefix, 
-  line = "end " .. name 
-})
+  local end_node = linkedlist.insert_after(tangled_ll, tangled_it, { 
+    linetype = LineType.SENTINEL, 
+    prefix = prefix, 
+    line = "end " .. name 
+  })
 
-@if_no_sections_for_name_return
-@if_already_in_stack_return
-@push_name_onto_stack
+  @if_no_sections_for_name_return
+  @if_already_in_stack_return
+  @push_name_onto_stack
 
-for node in linkedlist.iter(sections_ll[name]) do
-  local l = node.data
-  @if_operator_add_append_before_end_node
-  @if_operator_sub_append_after_start_node
-  @else_operator_equal_clear_and_put_after_start_node
-end
+  for node in linkedlist.iter(sections_ll[name]) do
+    local l = node.data
+    @if_operator_add_append_before_end_node
+    @if_operator_sub_append_after_start_node
+    @else_operator_equal_clear_and_put_after_start_node
+  end
 
-@pop_name_from_stack
+  @pop_name_from_stack
 
-return start_node, end_node
+  return start_node, end_node
 end
 
 @if_no_sections_for_name_return+=
 if not sections_ll[name] then
-return start_node, end_node
+  return start_node, end_node
 end
 
 @if_operator_add_append_before_end_node+=
 if l.op == "+=" then
-local after_this = end_node.prev
-@create_sentinel_for_section
-@insert_lines_after_this
+  local after_this = end_node.prev
+  @create_sentinel_for_section
+  @insert_lines_after_this
 
 @if_operator_sub_append_after_start_node+=
 elseif l.op == "-=" then
-local after_this = start_node
-@create_sentinel_for_section
-@insert_lines_after_this
+  local after_this = start_node
+  @create_sentinel_for_section
+  @insert_lines_after_this
 
 @else_operator_equal_clear_and_put_after_start_node+=
 else
-@clear_nodes_between_start_and_end_node
-local after_this = start_node
-@create_sentinel_for_section
-@insert_lines_after_this
+  @clear_nodes_between_start_and_end_node
+  local after_this = start_node
+  @create_sentinel_for_section
+  @insert_lines_after_this
 end
 
 @insert_lines_after_this+=
 node = node.next
 while node do
-if node.data.linetype == LineType.TEXT then
-  @create_tangled_line
-  @put_tangled_line_after_this
-  l.untangled = node
+  if node.data.linetype == LineType.TEXT then
+    @create_tangled_line
+    @put_tangled_line_after_this
+    l.untangled = node
 
-  node.data.tangled = node.data.tangled or {}
-  table.insert(node.data.tangled, after_this)
-elseif node.data.linetype == LineType.REFERENCE then
-  local ref_start, ref_end = tangleRec(node.data.str, sections_ll, tangled_ll, after_this, prefix .. node.data.prefix, stack)
-  node.data.tangled = node.data.tangled or {}
-  table.insert(node.data.tangled, {ref_start, ref_end})
+    node.data.tangled = node.data.tangled or {}
+    table.insert(node.data.tangled, after_this)
+  elseif node.data.linetype == LineType.REFERENCE then
+    local ref_start, ref_end = tangleRec(node.data.str, sections_ll, tangled_ll, after_this, prefix .. node.data.prefix, stack)
+    node.data.tangled = node.data.tangled or {}
+    table.insert(node.data.tangled, {ref_start, ref_end})
 
-  ref_start.data.untangled = node
-  ref_end.data.untangled = node
-  ref_end.data.prefix = node.data.prefix
+    ref_start.data.untangled = node
+    ref_end.data.untangled = node
+    ref_end.data.prefix = node.data.prefix
 
-  after_this = ref_end
-elseif node.data.linetype == LineType.SECTION then
-  break
-end
-node = node.next
+    after_this = ref_end
+  elseif node.data.linetype == LineType.SECTION then
+    break
+  end
+  node = node.next
 end
 
 @create_sentinel_for_section+=
 local section_sentinel = linkedlist.insert_after(tangled_ll, after_this, { 
-linetype = LineType.SENTINEL, 
-prefix = after_this.node.prefix,
-untangled = node
+  linetype = LineType.SENTINEL, 
+  prefix = after_this.data.prefix,
+  untangled = node
 })
 l.tangled = l.tangled or {}
 table.insert(l.tangled, section_sentinel)
+after_this = section_sentinel
 
 @create_tangled_line+=
 local l = { 
-linetype = LineType.TANGLED, 
-prefix = prefix,
-line = prefix .. node.data.str,
+  linetype = LineType.TANGLED, 
+  prefix = prefix,
+  line = prefix .. node.data.str,
 }
 
 @put_tangled_line_after_this+=
@@ -546,4 +547,14 @@ for line in linkedlist.iter(tangled_ll) do
   if line.linetype == LineType.TANGLED then
     print(line.line)
   end
+end
+
+@display_untangle_output+=
+for line in linkedlist.iter(untangled_ll) do
+  print(getLinetype(line.linetype) .. " " .. vim.inspect(line.line))
+end
+
+@display_tangle_output_detail+=
+for line in linkedlist.iter(tangled_ll) do
+  print(getLinetype(line.linetype) .. " " .. vim.inspect(line.line))
 end

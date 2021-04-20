@@ -57,7 +57,7 @@ end
 local start_buf, end_buf
 
 @line_types+=
-BUF_DELIM,
+BUF_DELIM = 7,
 
 @print_linetypes+=
 elseif linetype == LineType.BUF_DELIM then
@@ -65,13 +65,13 @@ elseif linetype == LineType.BUF_DELIM then
 
 @create_untangled_start_end_sentinel+=
 start_buf = linkedlist.push_back(untangled_ll, {
-  linetype = BUF_DELIM,
+  linetype = LineType.BUF_DELIM,
   buf = buf,
   str = "START " .. buf,
 })
 
 end_buf = linkedlist.push_back(untangled_ll, {
-  linetype = BUF_DELIM,
+  linetype = LineType.BUF_DELIM,
   buf = buf,
   str = "END " .. buf,
 })
@@ -103,11 +103,11 @@ if not asm_namespaces[name] then
   check_links = true
 end
 
-local untangled_ll = asm_namespaces[name].untangled_ll
-local sections_ll = asm_namespaces[name].sections_ll
-local tangled_ll = asm_namespaces[name].tangled_ll
-local root_set = asm_namespaces[name].root_set
-local parts_ll = asm_namespaces[name].parts_ll
+untangled_ll = asm_namespaces[name].untangled_ll
+sections_ll = asm_namespaces[name].sections_ll
+tangled_ll = asm_namespaces[name].tangled_ll
+root_set = asm_namespaces[name].root_set
+parts_ll = asm_namespaces[name].parts_ll
 
 if check_links then
   @check_if_there_are_links
@@ -146,34 +146,39 @@ local f = io.open(origin_path, "r")
 if f then
   @create_start_and_end_sentinel_for_part
 	local lnum = 1
-  local insert_after = start_part
+  local insert_after = start_buf
 	while true do
 		local line = f:read("*line")
 		if not line then break end
-		if lnum > 1 then
-      @check_if_inserted_line_is_section
-      @check_if_inserted_line_is_reference
-      @otherwise_inserted_line_is_text
-		end
+    @check_if_inserted_line_is_section
+    @check_if_inserted_line_is_reference
+    @if_assembly_only_add_it_to_untangled
+    @otherwise_inserted_line_is_text
 		lnum = lnum + 1
 	end
 	f:close()
 end
 
+@if_assembly_only_add_it_to_untangled+=
+elseif lnum == 1 and string.match(line, "^##%S+$") then
+  @get_assembly_name
+  @create_assembly_line
+  @append_assembly_to_untangled
+
 @create_start_and_end_sentinel_for_part+=
-local start_part = linkedlist.push_back(untangled_ll, {
-  linetype = BUF_DELIM,
+local start_buf = linkedlist.push_back(untangled_ll, {
+  linetype = LineType.BUF_DELIM,
   str = "START " .. origin_path,
 })
 
-local end_part = linkedlist.push_back(untangled_ll, {
-  linetype = BUF_DELIM,
+local end_buf = linkedlist.push_back(untangled_ll, {
+  linetype = LineType.BUF_DELIM,
   str = "END " .. origin_path,
 })
 
 linkedlist.push_back(parts_ll, {
-  start_buf = start_part,
-  end_buf = end_part,
+  start_buf = start_buf,
+  end_buf = end_buf,
   name = origin_path,
 })
 
@@ -192,10 +197,10 @@ end
 local part_after = parts_ll.head
 local cur_name = vim.api.nvim_buf_get_name(0)
 while part_after do
-  part_after = part_after.next
   if part_after.data.name > cur_name then
     break
   end
+  part_after = part_after.next
 end
 
 local new_start_buf, new_end_buf
@@ -207,13 +212,13 @@ end
 
 @push_part_sentinel_at_end+=
 new_start_buf = linkedlist.push_back(untangled_ll, {
-  linetype = BUF_DELIM,
+  linetype = LineType.BUF_DELIM,
   buf = buf,
   str = "START " .. buf,
 })
 
 new_end_buf = linkedlist.push_back(untangled_ll, {
-  linetype = BUF_DELIM,
+  linetype = LineType.BUF_DELIM,
   buf = buf,
   str = "END " .. buf,
 })
@@ -228,13 +233,14 @@ linkedlist.push_back(parts_ll, {
 local end_buf_after = part_after.data.start_buf
 
 new_start_buf = linkedlist.insert_before(untangled_ll, end_buf_after, {
-  linetype = BUF_DELIM,
+  linetype = LineType.BUF_DELIM,
   buf = buf,
   str = "START " .. buf,
 })
 
-new_end_buf = linkedlist.insert_before(untangled_ll, end_buf_after, {
-  linetype = BUF_DELIM,
+
+new_end_buf = linkedlist.insert_after(untangled_ll, new_start_buf, {
+  linetype = LineType.BUF_DELIM,
   buf = buf,
   str = "END " .. buf,
 })
@@ -247,9 +253,9 @@ linkedlist.insert_before(parts_ll, part_after, {
 
 @transfer_untangled_to_new_namespace+=
 local transfer_this = start_buf.next
-local insert_after = new_start_buf
+local dest = new_start_buf
 while transfer_this ~= end_buf do
-  insert_after = linkedlist.insert_after(untangled_ll, insert_after, transfer_this.data)
+  dest = linkedlist.insert_after(untangled_ll, dest, transfer_this.data)
   local delete_this = transfer_this
   transfer_this = transfer_this.next
   linkedlist.remove(old_untangled_ll, delete_this)
@@ -261,12 +267,16 @@ old_untangled_ll = nil
 start_buf = new_start_buf
 end_buf = new_end_buf
 
+insert_after = start_buf.next
+
 @generate_tangled_new_namespace+=
-local insert_after = start_buf
-@add_lines_back_to_section
+do
+  local insert_after = start_buf
+  @add_lines_back_to_section
+end
 
 @line_types+=
-ASSEMBLY,
+ASSEMBLY = 6,
 
 @print_linetypes+=
 elseif linetype == LineType.ASSEMBLY then return "ASSEMBLY"
@@ -278,4 +288,4 @@ local l = {
 }
 
 @append_assembly_to_untangled+=
-linkedlist.insert_after(untangled_ll, start_buf, l)
+insert_after = linkedlist.insert_after(untangled_ll, start_buf, l)

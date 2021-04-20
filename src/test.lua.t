@@ -1,5 +1,7 @@
+##test
 @*=
 function test()
+  @print
   if false then
   @else_case
 end

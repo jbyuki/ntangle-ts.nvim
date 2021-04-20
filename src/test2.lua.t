@@ -1,0 +1,3 @@
+##test
+@print+=
+print(a)

@@ -47,12 +47,16 @@ Possible solution:
 Usage
 -----
 
-Note: **Should work but not stable at all.**
+Status: **unstable**
 
-* Open a `*.t` ntangle file
-* Override treesitter decoration provider `lua require"ntangle-ts".override()`
-* Attach to current buffer `lua require"ntangle-ts".attach()`
-* After modifying the buffer, it should syntax highlight using `ntangle-ts`
+```vim
+lua require"ntangle-ts".override()
+
+augroup ntanglets
+	autocmd!
+	autocmd BufRead *.t lua require"ntangle-ts".attach()
+augroup END
+```
 
 Improvements
 ------------

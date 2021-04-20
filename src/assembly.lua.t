@@ -328,9 +328,3 @@ elseif cur_delete == start_buf.next and cur_delete.data.linetype == LineType.ASS
   @transfer_untangled_to_new_namespace
   @generate_tangled_new_namespace_insert
   cur_delete = start_buf.next
-
-@display_roots+=
-print("ROOTS")
-for name,_ in pairs(root_set) do
-  print(name)
-end

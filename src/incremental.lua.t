@@ -551,22 +551,3 @@ local LineType = {
 REFERENCE = 1,
 TEXT = 2,
 SECTION = 3,
-
-@display_tangle_output+=
-print("TANGLED")
-for line in linkedlist.iter(tangled_ll) do
-  if line.linetype == LineType.TANGLED then
-    print(line.line)
-  end
-end
-
-@display_untangle_output+=
-print("UNTANGLED")
-for line in linkedlist.iter(untangled_ll) do
-  print(getLinetype(line.linetype) .. " " .. vim.inspect(line.str))
-end
-
-@display_tangle_output_detail+=
-for line in linkedlist.iter(tangled_ll) do
-  print(getLinetype(line.linetype) .. " " .. vim.inspect(line.line))
-end

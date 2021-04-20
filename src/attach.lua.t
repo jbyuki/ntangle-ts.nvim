@@ -2,6 +2,12 @@
 @implement+=
 function M.attach()
   @get_current_buffer
+
+	@get_language_extension
+	@create_parser_for_buffer
+	@create_highlighter_for_buffer
+	@set_filetype_to_original_language
+
   @return_if_already_attached
 
   local lookup = {}

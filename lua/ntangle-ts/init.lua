@@ -1,4 +1,4 @@
--- Generated from assembly.lua.t, attach.lua.t, build_lookup.lua.t, debug.lua.t, incremental.lua.t, init.lua.t, linkedlist.lua.t, on_buf.lua.t, on_line.lua.t, on_win.lua.t, override_decoration_provider.lua.t, parse.lua.t, parser.lua.t using ntangle.nvim
+-- Generated from assembly.lua.t, attach.lua.t, build_lookup.lua.t, debug.lua.t, incremental.lua.t, init.lua.t, linkedlist.lua.t, on_buf.lua.t, on_line.lua.t, on_win.lua.t, override_decoration_provider.lua.t, parse.lua.t, parser.lua.t, treesitter.lua.t using ntangle.nvim
 local asm_namespaces = {}
 
 local backlookup = {}
@@ -19,7 +19,6 @@ local LineType = {
 	REFERENCE = 1,
 	TEXT = 2,
 	SECTION = 3,
-	
 }
 
 local linkedlist = {}
@@ -39,6 +38,16 @@ local M = {}
 function M.attach()
   local buf = vim.api.nvim_get_current_buf()
   
+
+	local bufname = vim.api.nvim_buf_get_name(0)
+	local ext = vim.fn.fnamemodify(bufname, ":e:e:r")
+	
+	local parser = vim.treesitter.get_parser(buf, ext)
+	
+	vim.treesitter.highlighter.new(parser, {})
+	
+	vim.api.nvim_command("set ft=" .. ext)
+
   if backbuf[buf] then
     return
   end
@@ -2136,7 +2145,6 @@ function M.attach()
           end
           
           cur_delete = start_buf.next
-        
         else
           if cur_delete.data.tangled then
             for _, ref in ipairs(cur_delete.data.tangled) do
@@ -3275,6 +3283,7 @@ end
 function M.print_lookup()
   print("backlookup " .. vim.inspect(backlookup))
 end
+
 function getLinetype(linetype)
   if linetype == LineType.TEXT then return "TEXT"
   elseif linetype == LineType.REFERENCE then return "REFERENCE"

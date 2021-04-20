@@ -38,7 +38,7 @@ end
 @search_untangled_node_insert
 @add_lines_incremental
 
-@display_tangle_output
+-- @display_tangle_output
 -- @display_untangle_output
 
 @script_variables+=

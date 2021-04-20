@@ -1,9 +1,12 @@
 ##ntangle-ts
 @update_line_number_untangled+=
 local lnum = 1
-for line in linkedlist.iter(untangled_ll) do
-  line.lnum = lnum
+local it = start_buf.next
+while it ~= end_buf do
+  it.data.lnum = lnum
+  it.data.buf = buf
   lnum = lnum + 1
+  it = it.next
 end
 
 @script_variables+=
@@ -15,7 +18,9 @@ local lookup = {}
 local tangle_lnum = 1
 for line in linkedlist.iter(tangled_ll) do
   if line.linetype == LineType.TANGLED then
-    lookup[line.untangled.data.lnum] = { tangle_lnum, string.len(line.prefix) }
+    if line.untangled.data.buf == buf then
+      lookup[line.untangled.data.lnum] = { tangle_lnum, string.len(line.prefix) }
+    end
     tangle_lnum = tangle_lnum + 1
   end
 end

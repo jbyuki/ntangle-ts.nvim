@@ -17,7 +17,6 @@ vim.api.nvim_buf_set_lines(0, 0, -1, true, {
   "  print(a)",
   "end",
 })
-
 require"ntangle-ts".attach()
 
 vim.api.nvim_buf_set_lines(0, 0, 0, true, {

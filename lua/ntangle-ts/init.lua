@@ -1,4 +1,4 @@
--- Generated from assembly.lua.t, attach.lua.t, build_lookup.lua.t, debug.lua.t, incremental.lua.t, init.lua.t, linkedlist.lua.t, on_buf.lua.t, on_line.lua.t, on_win.lua.t, override_decoration_provider.lua.t, parse.lua.t, parser.lua.t, treesitter.lua.t using ntangle.nvim
+-- Generated from assembly.lua.t, attach.lua.t, build_lookup.lua.t, debug.lua.t, incremental.lua.t, init.lua.t, linkedlist.lua.t, on_buf.lua.t, on_bytes.lua.t, on_line.lua.t, on_win.lua.t, override_decoration_provider.lua.t, parse.lua.t, parser.lua.t, treesitter.lua.t using ntangle.nvim
 local asm_namespaces = {}
 
 local backlookup = {}
@@ -240,7 +240,9 @@ function M.attach()
                 untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
               end
               
-              linkedlist.remove(tangled_ll, to_delete)
+              -- linkedlist.remove(tangled_ll, to_delete)
+              to_delete.data.remove = true
+              
               copy = copy.next
             end
           end
@@ -248,7 +250,7 @@ function M.attach()
         else
           if cur_delete.data.tangled then
             for _, ref in ipairs(cur_delete.data.tangled) do
-              linkedlist.remove(tangled_ll, ref)
+              ref.data.remove = true
             end
           end
           
@@ -322,6 +324,7 @@ function M.attach()
                 prefix = ref.data.prefix,
                 line = ref.data.prefix .. line,
                 untangled = it,
+                insert = true,
               })
               table.insert(l.tangled, new_node)
             end
@@ -451,7 +454,9 @@ function M.attach()
                   untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
                 end
                 
-                linkedlist.remove(tangled_ll, to_delete)
+                -- linkedlist.remove(tangled_ll, to_delete)
+                to_delete.data.remove = true
+                
                 copy = copy.next
               end
             end
@@ -459,7 +464,7 @@ function M.attach()
           else
             if cur_delete.data.tangled then
               for _, ref in ipairs(cur_delete.data.tangled) do
-                linkedlist.remove(tangled_ll, ref)
+                ref.data.remove = true
               end
             end
             
@@ -673,7 +678,9 @@ function M.attach()
         		                untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
         		              end
         		              
-        		              linkedlist.remove(tangled_ll, to_delete)
+        		              -- linkedlist.remove(tangled_ll, to_delete)
+        		              to_delete.data.remove = true
+        		              
         		              copy = copy.next
         		            end
         		          end
@@ -681,7 +688,7 @@ function M.attach()
         		        else
         		          if cur_delete.data.tangled then
         		            for _, ref in ipairs(cur_delete.data.tangled) do
-        		              linkedlist.remove(tangled_ll, ref)
+        		              ref.data.remove = true
         		            end
         		          end
         		          
@@ -755,6 +762,7 @@ function M.attach()
         		                prefix = ref.data.prefix,
         		                line = ref.data.prefix .. line,
         		                untangled = it,
+        		                insert = true,
         		              })
         		              table.insert(l.tangled, new_node)
         		            end
@@ -854,6 +862,7 @@ function M.attach()
         		            prefix = ref.data.prefix,
         		            line = ref.data.prefix .. line,
         		            untangled = it,
+        		            insert = true,
         		          })
         		          table.insert(l.tangled, new_node)
         		        end
@@ -1117,6 +1126,7 @@ function M.attach()
                   prefix = ref.data.prefix,
                   line = ref.data.prefix .. line,
                   untangled = it,
+                  insert = true,
                 })
                 table.insert(l.tangled, new_node)
               end
@@ -1163,6 +1173,7 @@ function M.attach()
             prefix = ref.data.prefix,
             line = ref.data.prefix .. line,
             untangled = it,
+            insert = true,
           })
           table.insert(l.tangled, new_node)
         end
@@ -1277,7 +1288,9 @@ function M.attach()
                     untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
                   end
                   
-                  linkedlist.remove(tangled_ll, to_delete)
+                  -- linkedlist.remove(tangled_ll, to_delete)
+                  to_delete.data.remove = true
+                  
                   copy = copy.next
                 end
               end
@@ -1285,7 +1298,7 @@ function M.attach()
             else
               if cur_delete.data.tangled then
                 for _, ref in ipairs(cur_delete.data.tangled) do
-                  linkedlist.remove(tangled_ll, ref)
+                  ref.data.remove = true
                 end
               end
               
@@ -1378,6 +1391,7 @@ function M.attach()
                     prefix = ref.data.prefix,
                     line = ref.data.prefix .. line,
                     untangled = it,
+                    insert = true,
                   })
                   table.insert(l.tangled, new_node)
                 end
@@ -1409,7 +1423,9 @@ function M.attach()
                 untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
               end
               
-              linkedlist.remove(tangled_ll, to_delete)
+              -- linkedlist.remove(tangled_ll, to_delete)
+              to_delete.data.remove = true
+              
               copy = copy.next
             end
           end
@@ -1471,7 +1487,9 @@ function M.attach()
                       untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
                     end
                     
-                    linkedlist.remove(tangled_ll, to_delete)
+                    -- linkedlist.remove(tangled_ll, to_delete)
+                    to_delete.data.remove = true
+                    
                     copy = copy.next
                   end
                 end
@@ -1479,7 +1497,7 @@ function M.attach()
               else
                 if cur_delete.data.tangled then
                   for _, ref in ipairs(cur_delete.data.tangled) do
-                    linkedlist.remove(tangled_ll, ref)
+                    ref.data.remove = true
                   end
                 end
                 
@@ -1695,7 +1713,9 @@ function M.attach()
             		                untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
             		              end
             		              
-            		              linkedlist.remove(tangled_ll, to_delete)
+            		              -- linkedlist.remove(tangled_ll, to_delete)
+            		              to_delete.data.remove = true
+            		              
             		              copy = copy.next
             		            end
             		          end
@@ -1703,7 +1723,7 @@ function M.attach()
             		        else
             		          if cur_delete.data.tangled then
             		            for _, ref in ipairs(cur_delete.data.tangled) do
-            		              linkedlist.remove(tangled_ll, ref)
+            		              ref.data.remove = true
             		            end
             		          end
             		          
@@ -1777,6 +1797,7 @@ function M.attach()
             		                prefix = ref.data.prefix,
             		                line = ref.data.prefix .. line,
             		                untangled = it,
+            		                insert = true,
             		              })
             		              table.insert(l.tangled, new_node)
             		            end
@@ -1876,6 +1897,7 @@ function M.attach()
             		            prefix = ref.data.prefix,
             		            line = ref.data.prefix .. line,
             		            untangled = it,
+            		            insert = true,
             		          })
             		          table.insert(l.tangled, new_node)
             		        end
@@ -2139,6 +2161,7 @@ function M.attach()
                       prefix = ref.data.prefix,
                       line = ref.data.prefix .. line,
                       untangled = it,
+                      insert = true,
                     })
                     table.insert(l.tangled, new_node)
                   end
@@ -2154,7 +2177,7 @@ function M.attach()
         else
           if cur_delete.data.tangled then
             for _, ref in ipairs(cur_delete.data.tangled) do
-              linkedlist.remove(tangled_ll, ref)
+              ref.data.remove = true
             end
           end
           
@@ -2311,7 +2334,9 @@ function M.attach()
                     untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
                   end
                   
-                  linkedlist.remove(tangled_ll, to_delete)
+                  -- linkedlist.remove(tangled_ll, to_delete)
+                  to_delete.data.remove = true
+                  
                   copy = copy.next
                 end
               end
@@ -2319,7 +2344,7 @@ function M.attach()
             else
               if cur_delete.data.tangled then
                 for _, ref in ipairs(cur_delete.data.tangled) do
-                  linkedlist.remove(tangled_ll, ref)
+                  ref.data.remove = true
                 end
               end
               
@@ -2393,6 +2418,7 @@ function M.attach()
                     prefix = ref.data.prefix,
                     line = ref.data.prefix .. line,
                     untangled = it,
+                    insert = true,
                   })
                   table.insert(l.tangled, new_node)
                 end
@@ -2522,7 +2548,9 @@ function M.attach()
                       untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
                     end
                     
-                    linkedlist.remove(tangled_ll, to_delete)
+                    -- linkedlist.remove(tangled_ll, to_delete)
+                    to_delete.data.remove = true
+                    
                     copy = copy.next
                   end
                 end
@@ -2530,7 +2558,7 @@ function M.attach()
               else
                 if cur_delete.data.tangled then
                   for _, ref in ipairs(cur_delete.data.tangled) do
-                    linkedlist.remove(tangled_ll, ref)
+                    ref.data.remove = true
                   end
                 end
                 
@@ -2744,7 +2772,9 @@ function M.attach()
             		                untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
             		              end
             		              
-            		              linkedlist.remove(tangled_ll, to_delete)
+            		              -- linkedlist.remove(tangled_ll, to_delete)
+            		              to_delete.data.remove = true
+            		              
             		              copy = copy.next
             		            end
             		          end
@@ -2752,7 +2782,7 @@ function M.attach()
             		        else
             		          if cur_delete.data.tangled then
             		            for _, ref in ipairs(cur_delete.data.tangled) do
-            		              linkedlist.remove(tangled_ll, ref)
+            		              ref.data.remove = true
             		            end
             		          end
             		          
@@ -2826,6 +2856,7 @@ function M.attach()
             		                prefix = ref.data.prefix,
             		                line = ref.data.prefix .. line,
             		                untangled = it,
+            		                insert = true,
             		              })
             		              table.insert(l.tangled, new_node)
             		            end
@@ -2925,6 +2956,7 @@ function M.attach()
             		            prefix = ref.data.prefix,
             		            line = ref.data.prefix .. line,
             		            untangled = it,
+            		            insert = true,
             		          })
             		          table.insert(l.tangled, new_node)
             		        end
@@ -3188,6 +3220,7 @@ function M.attach()
                       prefix = ref.data.prefix,
                       line = ref.data.prefix .. line,
                       untangled = it,
+                      insert = true,
                     })
                     table.insert(l.tangled, new_node)
                   end
@@ -3234,6 +3267,7 @@ function M.attach()
                 prefix = ref.data.prefix,
                 line = ref.data.prefix .. line,
                 untangled = it,
+                insert = true,
               })
               table.insert(l.tangled, new_node)
             end
@@ -3241,6 +3275,73 @@ function M.attach()
           
         end
         
+      end
+      
+      
+      local lnum = 1
+      local lrow = 1
+      local source
+      local it = tangled_ll.head
+      
+      while it do
+        if it.data.linetype == LineType.TANGLED then
+          if it.data.remove then
+            local start_byte = (source and string.len(source)) or 0
+            local start_col = 0
+            local start_row = lrow-1
+            local old_row = 1
+            local new_row = 0
+            local old_byte = string.len(it.data.line) + 1
+            local new_byte = 0
+            local old_end_col = 0
+            local new_end_col = 0
+            
+            trees[buf]:edit(start_byte,start_byte+old_byte,start_byte+new_byte,
+              start_row, start_col,
+              start_row+old_row, old_end_col,
+              start_row+new_row, new_end_col)
+            
+            local tmp = it
+            it = it.next
+            linkedlist.remove(tangled_ll, tmp)
+            
+          elseif it.data.insert then
+            local start_byte = (source and string.len(source)) or 0
+            local start_col = 0
+            local start_row = lrow-1
+            local old_row = 0
+            local new_row = 1
+            local old_byte = 0
+            local new_byte = string.len(it.data.line) + 1
+            local old_end_col = 0
+            local new_end_col = 0
+            
+            trees[buf]:edit(start_byte,start_byte+old_byte,start_byte+new_byte,
+              start_row, start_col,
+              start_row+old_row, old_end_col,
+              start_row+new_row, new_end_col)
+            if not source then
+              source = it.data.line
+            else
+              source = source .. "\n" .. it.data.line
+            end
+            
+            it.data.insert = nil
+            lrow = lrow + 1
+            it = it.next
+          else
+            if not source then
+              source = it.data.line
+            else
+              source = source .. "\n" .. it.data.line
+            end
+            
+            lrow = lrow + 1
+            it = it.next
+          end
+        else
+            it = it.next
+        end
       end
       
       
@@ -3279,8 +3380,8 @@ function M.attach()
       end
       
       sources[buf] = table.concat(source_lines, "\n")
-      print(trees[buf])
-      local cur_tree, tree_changes = parser:parse(nil, sources[buf])
+      -- print(trees[buf])
+      local cur_tree, tree_changes = parser:parse(trees[buf], sources[buf])
       -- print("incremental")
       -- print(vim.inspect(sources[buf]))
       -- print(cur_tree:root():sexpr())
@@ -3355,6 +3456,7 @@ function tangleRec(name, sections_ll, tangled_ll, tangled_it, prefix, stack)
             linetype = LineType.TANGLED, 
             prefix = prefix,
             line = prefix .. node.data.str,
+            insert = true,
           }
           
           after_this = linkedlist.insert_after(tangled_ll, after_this, l)
@@ -3398,6 +3500,7 @@ function tangleRec(name, sections_ll, tangled_ll, tangled_it, prefix, stack)
             linetype = LineType.TANGLED, 
             prefix = prefix,
             line = prefix .. node.data.str,
+            insert = true,
           }
           
           after_this = linkedlist.insert_after(tangled_ll, after_this, l)
@@ -3441,6 +3544,7 @@ function tangleRec(name, sections_ll, tangled_ll, tangled_it, prefix, stack)
             linetype = LineType.TANGLED, 
             prefix = prefix,
             line = prefix .. node.data.str,
+            insert = true,
           }
           
           after_this = linkedlist.insert_after(tangled_ll, after_this, l)

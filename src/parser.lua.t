@@ -16,8 +16,8 @@ local cur_tree, tree_changes = parser:parse(nil, sources[buf])
 trees[buf] = cur_tree
 
 @parse_everything_again+=
-print(trees[buf])
-local cur_tree, tree_changes = parser:parse(nil, sources[buf])
+-- print(trees[buf])
+local cur_tree, tree_changes = parser:parse(trees[buf], sources[buf])
 -- print("incremental")
 -- print(vim.inspect(sources[buf]))
 -- print(cur_tree:root():sexpr())

@@ -6,27 +6,12 @@ vim.api.nvim_buf_set_lines(0, 0, -1, true, {})
 
 vim.api.nvim_buf_set_lines(0, 0, -1, true, {
   "@*=",
-  "function test()",
-  "  @print",
-  "  if false then",
-  "  @else_case",
-  "end",
-  "@else_case+=",
-  "else",
-  "  local a = 0",
-  "  print(a)",
-  "end",
+  "print(a)",
 })
 require"ntangle-ts".attach()
 
-vim.api.nvim_buf_set_lines(0, 0, 0, true, {
-  "##test",
-})
-
-vim.api.nvim_buf_set_lines(0, 0, 1, true, { })
-vim.api.nvim_buf_set_lines(0, -1, -1, true, {
-  "@else_case+=",
-  "print(z)",
+vim.api.nvim_buf_set_lines(0, 1, 1, true, {
+  "local a = 0",
 })
 
 vim.api.nvim_command("bw!")

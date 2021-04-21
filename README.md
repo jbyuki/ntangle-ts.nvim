@@ -63,4 +63,5 @@ Improvements
 
 * [x] incremental tangling
 * [x] assemblies
-* [ ] on_bytes for tangled
+* [x] on_bytes for tangled
+* [ ] multiple roots

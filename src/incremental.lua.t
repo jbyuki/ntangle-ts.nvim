@@ -38,6 +38,8 @@ end
 @search_untangled_node_insert
 @add_lines_incremental
 
+@send_on_bytes
+
 -- @display_tangle_output
 -- @display_untangle_output
 
@@ -150,6 +152,7 @@ local l = {
   linetype = LineType.TANGLED, 
   prefix = prefix,
   line = prefix .. node.data.str,
+  insert = true,
 }
 
 @put_tangled_line_after_this+=
@@ -212,7 +215,8 @@ elseif cur_delete.data.linetype == LineType.REFERENCE then
       if copy == ref_end then quit = true end
       local to_delete = copy
       @remove_reference_to_tangled_node
-      linkedlist.remove(tangled_ll, to_delete)
+      -- linkedlist.remove(tangled_ll, to_delete)
+      @if_tangled_text_add_to_thombstone
       copy = copy.next
     end
   end
@@ -237,7 +241,22 @@ end
 @remove_text_in_tangled+=
 if cur_delete.data.tangled then
   for _, ref in ipairs(cur_delete.data.tangled) do
-    linkedlist.remove(tangled_ll, ref)
+    ref.data.remove = true
+  end
+end
+
+@if_tangled_text_add_to_thombstone+=
+to_delete.data.remove = true
+
+@remove_all_thombstones+=
+local it = tangled_ll.head
+while it do
+  if it.data.linetype == LineType.TANGLED and it.data.remove then
+    local tmp = it
+    it = it.next
+    linkedlist.remove(tangled_ll, tmp)
+  else
+    it = it.next
   end
 end
 
@@ -500,6 +519,7 @@ if tangled then
       prefix = ref.data.prefix,
       line = ref.data.prefix .. line,
       untangled = it,
+      insert = true,
     })
     table.insert(l.tangled, new_node)
   end

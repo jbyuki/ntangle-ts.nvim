@@ -3826,7 +3826,6 @@ function M.override()
   local nss = vim.api.nvim_get_namespaces()
   ns = nss["treesitter/highlighter"]
   
-  print("override!")
   vim.api.nvim_set_decoration_provider(ns, {
     on_buf = highlighter._on_buf,
     on_line = M._on_line,

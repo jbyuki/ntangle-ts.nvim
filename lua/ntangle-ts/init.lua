@@ -506,7 +506,6 @@ function M.attach()
       parts_ll = asm_namespaces[name].parts_ll
       buf_asm = name
       
-      
       if type(name) ~= "number" and check_links then
         path = vim.fn.fnamemodify(path, ":p")
         local parts = vim.split(vim.fn.glob(path .. assembly_tail .. ".*.t"), "\n")
@@ -515,366 +514,371 @@ function M.attach()
         for _, part in ipairs(parts) do
         	if link_name ~= part then
         		local f = io.open(part, "r")
-        		local origin_path = f:read("*line")
-        		f:close()
-        		
-        		local f = io.open(origin_path, "r")
+        		local origin_path
         		if f then
-        		  local start_buf = linkedlist.push_back(untangled_ll, {
-        		    linetype = LineType.BUF_DELIM,
-        		    str = "START " .. origin_path,
-        		  })
-        		  
-        		  local end_buf = linkedlist.push_back(untangled_ll, {
-        		    linetype = LineType.BUF_DELIM,
-        		    str = "END " .. origin_path,
-        		  })
-        		  
-        		  linkedlist.push_back(parts_ll, {
-        		    start_buf = start_buf,
-        		    end_buf = end_buf,
-        		    name = origin_path,
-        		  })
-        		  
-        			local lnum = 1
-        		  local insert_after = start_buf
-        			while true do
-        				local line = f:read("*line")
-        				if not line then break end
-        		    if string.match(line, "^@[^@]%S*[+-]?=%s*$") then
-        		      local _, _, name, op = string.find(line, "^@(%S-)([+-]?=)%s*$")
-        		      
-        		      local l = { linetype = LineType.SECTION, str = name, op = op }
-        		      
-        		      insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
-        		      
-        		      local it = insert_after and insert_after.prev
-        		      while it ~= start_buf do
-        		        if it.data.linetype == LineType.SECTION and it.data.str == name then
-        		          break
-        		        end
-        		        it = it.prev
-        		      end
-        		      
-        		      local section
-        		      if it ~= start_buf then
-        		        section = linkedlist.insert_after(sections_ll[name], it.data.section, insert_after)
-        		        insert_after.data.section = section
-        		      else
-        		        sections_ll[name] = sections_ll[name] or {}
-        		        section = linkedlist.push_front(sections_ll[name], insert_after)
-        		      end
-        		      l.section = section
-        		      
-        		      local ref_it
-        		      if op == "+=" then
-        		        section = section.next
-        		        while section do
-        		          local it = section.data
-        		          if it.data.op == "+=" then
-        		            ref_it = it.data.tangled
-        		          end
-        		          section = section.next
-        		        end
-        		      elseif op == "-=" then
-        		        section = section.prev
-        		        while section do
-        		          local it = section.data
-        		          if it.data.op == "-=" then
-        		            ref_it = it.data.tangled
-        		            break
-        		          end
-        		          section = section.prev
-        		        end
-        		      end
-        		      
-        		      if not ref_it then
-        		        if op == "+=" then
-        		          ref_it = {}
-        		          for line in linkedlist.iter(untangled_ll) do
-        		            if line.linetype == LineType.REFERENCE and line.str == name then
-        		              for _, ref in ipairs(line.tangled) do
-        		                table.insert(ref_it, ref[2])
-        		              end
-        		            end
-        		          end
-        		        elseif op == "-=" then
-        		          ref_it = {}
-        		          for line in linkedlist.iter(untangled_ll) do
-        		            if line.linetype == LineType.REFERENCE and line.str == name then
-        		              for _, ref in ipairs(line.tangled) do
-        		                table.insert(ref_it, ref[1])
-        		              end
-        		            end
-        		          end
-        		        end
-        		      end
-        		      
-        		      l.tangled = {}
-        		      if op == "+=" then
-        		        for _, ref in ipairs(ref_it) do
-        		          local section = linkedlist.insert_before(tangled_ll, ref, {
-        		            linetype = LineType.SENTINEL,
-        		            prefix = ref.prev.data.prefix,
-        		            untangled = insert_after
-        		          })
-        		          table.insert(l.tangled, section)
-        		        end
-        		      elseif op == "-=" then
-        		        for _, ref in ipairs(ref_it) do
-        		          local section = linkedlist.insert_after(tangled_ll, ref, {
-        		            linetype = LineType.SENTINEL,
-        		            prefix = ref.data.prefix,
-        		            untangled = insert_after
-        		          })
-        		          table.insert(l.tangled, section)
-        		        end
-        		      end
-        		      
-        		    
-        		      if op == "=" then
-        		        local start_file = linkedlist.push_back(tangled_ll, {
-        		          linetype = LineType.SENTINEL,
-        		          prefix = "",
-        		          line = "START " .. name,
-        		          untangled = insert_after,
-        		        })
-        		      
-        		        local end_file = linkedlist.push_back(tangled_ll, {
-        		          linetype = LineType.SENTINEL,
-        		          prefix = "",
-        		          line = "END " .. name,
-        		          untangled = insert_after,
-        		        })
-        		      
-        		        l.tangled = { start_file }
-        		        l.extra_tangled = end_file
-        		        root_set[l.str] = insert_after
-        		      
-        		      end
-        		      
-        		    
-        		      local it = insert_after and insert_after.next
-        		      while it ~= end_buf do
-        		        local cur_delete = it
-        		        if it.data.linetype == LineType.SECTION then
-        		          break
-        		        elseif cur_delete.data.linetype == LineType.REFERENCE then
-        		          for _, ref in ipairs(cur_delete.data.tangled) do
-        		            local ref_start, ref_end = unpack(ref)
-        		            local copy = ref_start
-        		            local quit = false
-        		            while copy and not quit do
-        		              if copy == ref_end then quit = true end
-        		              local to_delete = copy
-        		              local untangled = to_delete.data.untangled
-        		              if not untangled then
-        		                print("Something went south.")
-        		              elseif untangled.data.linetype == LineType.TEXT then
-        		                untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
-        		              elseif untangled.data.linetype == LineType.REFERENCE then
-        		                untangled.data.tangled = vim.tbl_filter(function(x) return x[1] ~= to_delete and x[2] ~= to_delete end, untangled.data.tangled)
-        		              elseif untangled.data.linetype == LineType.SECTION then
-        		                untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
-        		              end
-        		              
-        		              -- linkedlist.remove(tangled_ll, to_delete)
-        		              to_delete.data.remove = true
-        		              
-        		              copy = copy.next
-        		            end
-        		          end
-        		        
-        		        else
-        		          if cur_delete.data.tangled then
-        		            for _, ref in ipairs(cur_delete.data.tangled) do
-        		              ref.data.remove = true
-        		            end
-        		          end
-        		          
-        		        end
-        		        
-        		        it = it.next
-        		      end
-        		      
-        		      local it = insert_after and insert_after.next
-        		      while it ~= end_buf do
-        		        local insert_after = it.prev
-        		        if it.data.linetype == LineType.SECTION then
-        		          break
-        		        elseif it.data.linetype == LineType.REFERENCE then
-        		          local l = it.data
-        		          local name = l.str
-        		          local tangled = {}
-        		          if insert_after then
-        		            if insert_after.data.linetype == LineType.TEXT then
-        		              for _, ref in ipairs(insert_after.data.tangled) do
-        		                table.insert(tangled, ref)
-        		              end
-        		            elseif insert_after.data.linetype == LineType.REFERENCE then
-        		              for _, ref in ipairs(insert_after.data.tangled) do
-        		                local start_ref, end_ref = unpack(ref)
-        		                table.insert(tangled, end_ref)
-        		              end
-        		            elseif insert_after.data.linetype == LineType.SECTION then
-        		              for _, ref in ipairs(insert_after.data.tangled) do
-        		                table.insert(tangled, ref)
-        		              end
-        		            end
-        		          end
-        		          
-        		          l.tangled = {}
-        		          for _, ref in ipairs(tangled) do
-        		            local ref_start, ref_end = tangleRec(name, sections_ll, tangled_ll, ref, ref.data.prefix .. l.prefix, {})
-        		            table.insert(l.tangled, {ref_start, ref_end})
-        		            ref_start.data.untangled = it
-        		            ref_end.data.untangled = it
-        		            ref_end.data.prefix = ref.data.prefix
-        		          end
-        		          
-        		        
-        		        else
-        		          local l = it.data
-        		          local line = l.str
-        		          local tangled = {}
-        		          if insert_after then
-        		            if insert_after.data.linetype == LineType.TEXT then
-        		              for _, ref in ipairs(insert_after.data.tangled) do
-        		                table.insert(tangled, ref)
-        		              end
-        		            elseif insert_after.data.linetype == LineType.REFERENCE then
-        		              for _, ref in ipairs(insert_after.data.tangled) do
-        		                local start_ref, end_ref = unpack(ref)
-        		                table.insert(tangled, end_ref)
-        		              end
-        		            elseif insert_after.data.linetype == LineType.SECTION then
-        		              for _, ref in ipairs(insert_after.data.tangled) do
-        		                table.insert(tangled, ref)
-        		              end
-        		            end
-        		          end
-        		          
-        		          l.tangled = {}
-        		          if tangled then
-        		            for _, ref in ipairs(tangled) do
-        		              local new_node = linkedlist.insert_after(tangled_ll, ref, {
-        		                linetype = LineType.TANGLED,
-        		                prefix = ref.data.prefix,
-        		                line = ref.data.prefix .. line,
-        		                untangled = it,
-        		                insert = true,
-        		              })
-        		              table.insert(l.tangled, new_node)
-        		            end
-        		          end
-        		          
-        		        end
-        		        
-        		        it = it.next
-        		      end
-        		      
-        		    
-        		    elseif string.match(line, "^%s*@[^@]%S*%s*$") then
-        		      local _, _, prefix, name = string.find(line, "^(%s*)@(%S+)%s*$")
-        		      if name == nil then
-        		      	print(line)
-        		      end
-        		      
-        		    	local l = { 
-        		    		linetype = LineType.REFERENCE, 
-        		    		str = name,
-        		    		prefix = prefix
-        		    	}
-        		    	
-        		      local tangled = {}
-        		      if insert_after then
-        		        if insert_after.data.linetype == LineType.TEXT then
-        		          for _, ref in ipairs(insert_after.data.tangled) do
-        		            table.insert(tangled, ref)
-        		          end
-        		        elseif insert_after.data.linetype == LineType.REFERENCE then
-        		          for _, ref in ipairs(insert_after.data.tangled) do
-        		            local start_ref, end_ref = unpack(ref)
-        		            table.insert(tangled, end_ref)
-        		          end
-        		        elseif insert_after.data.linetype == LineType.SECTION then
-        		          for _, ref in ipairs(insert_after.data.tangled) do
-        		            table.insert(tangled, ref)
-        		          end
-        		        end
-        		      end
-        		      
-        		      insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
-        		      
-        		      local it = insert_after
-        		      l.tangled = {}
-        		      for _, ref in ipairs(tangled) do
-        		        local ref_start, ref_end = tangleRec(name, sections_ll, tangled_ll, ref, ref.data.prefix .. l.prefix, {})
-        		        table.insert(l.tangled, {ref_start, ref_end})
-        		        ref_start.data.untangled = it
-        		        ref_end.data.untangled = it
-        		        ref_end.data.prefix = ref.data.prefix
-        		      end
-        		      
-        		    
-        		    elseif lnum == 1 and string.match(line, "^##%S+$") then
-        		      local name = string.match(line, "^##(%S*)%s*$")
-        		      
-        		      local l = {
-        		        linetype = LineType.ASSEMBLY,
-        		        str = name,
-        		      }
-        		      
-        		      insert_after = linkedlist.insert_after(untangled_ll, start_buf, l)
-        		      
-        		    
-        		    else
-        		      local l = { 
-        		      	linetype = LineType.TEXT, 
-        		      	str = line 
-        		      }
-        		      local tangled = {}
-        		      if insert_after then
-        		        if insert_after.data.linetype == LineType.TEXT then
-        		          for _, ref in ipairs(insert_after.data.tangled) do
-        		            table.insert(tangled, ref)
-        		          end
-        		        elseif insert_after.data.linetype == LineType.REFERENCE then
-        		          for _, ref in ipairs(insert_after.data.tangled) do
-        		            local start_ref, end_ref = unpack(ref)
-        		            table.insert(tangled, end_ref)
-        		          end
-        		        elseif insert_after.data.linetype == LineType.SECTION then
-        		          for _, ref in ipairs(insert_after.data.tangled) do
-        		            table.insert(tangled, ref)
-        		          end
-        		        end
-        		      end
-        		      
-        		      insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
-        		      
-        		      local it = insert_after
-        		      l.tangled = {}
-        		      if tangled then
-        		        for _, ref in ipairs(tangled) do
-        		          local new_node = linkedlist.insert_after(tangled_ll, ref, {
-        		            linetype = LineType.TANGLED,
-        		            prefix = ref.data.prefix,
-        		            line = ref.data.prefix .. line,
-        		            untangled = it,
-        		            insert = true,
-        		          })
-        		          table.insert(l.tangled, new_node)
-        		        end
-        		      end
-        		      
-        		    end
-        		    
-        				lnum = lnum + 1
-        			end
-        			f:close()
+        		  origin_path = f:read("*line")
+        		  f:close()
         		end
         		
+            if origin_path then
+              local f = io.open(origin_path, "r")
+              if f then
+                local start_buf = linkedlist.push_back(untangled_ll, {
+                  linetype = LineType.BUF_DELIM,
+                  str = "START " .. origin_path,
+                })
+                
+                local end_buf = linkedlist.push_back(untangled_ll, {
+                  linetype = LineType.BUF_DELIM,
+                  str = "END " .. origin_path,
+                })
+                
+                linkedlist.push_back(parts_ll, {
+                  start_buf = start_buf,
+                  end_buf = end_buf,
+                  name = origin_path,
+                })
+                
+              	local lnum = 1
+                local insert_after = start_buf
+              	while true do
+              		local line = f:read("*line")
+              		if not line then break end
+                  if string.match(line, "^@[^@]%S*[+-]?=%s*$") then
+                    local _, _, name, op = string.find(line, "^@(%S-)([+-]?=)%s*$")
+                    
+                    local l = { linetype = LineType.SECTION, str = name, op = op }
+                    
+                    insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
+                    
+                    local it = insert_after and insert_after.prev
+                    while it ~= start_buf do
+                      if it.data.linetype == LineType.SECTION and it.data.str == name then
+                        break
+                      end
+                      it = it.prev
+                    end
+                    
+                    local section
+                    if it ~= start_buf then
+                      section = linkedlist.insert_after(sections_ll[name], it.data.section, insert_after)
+                      insert_after.data.section = section
+                    else
+                      sections_ll[name] = sections_ll[name] or {}
+                      section = linkedlist.push_front(sections_ll[name], insert_after)
+                    end
+                    l.section = section
+                    
+                    local ref_it
+                    if op == "+=" then
+                      section = section.next
+                      while section do
+                        local it = section.data
+                        if it.data.op == "+=" then
+                          ref_it = it.data.tangled
+                        end
+                        section = section.next
+                      end
+                    elseif op == "-=" then
+                      section = section.prev
+                      while section do
+                        local it = section.data
+                        if it.data.op == "-=" then
+                          ref_it = it.data.tangled
+                          break
+                        end
+                        section = section.prev
+                      end
+                    end
+                    
+                    if not ref_it then
+                      if op == "+=" then
+                        ref_it = {}
+                        for line in linkedlist.iter(untangled_ll) do
+                          if line.linetype == LineType.REFERENCE and line.str == name then
+                            for _, ref in ipairs(line.tangled) do
+                              table.insert(ref_it, ref[2])
+                            end
+                          end
+                        end
+                      elseif op == "-=" then
+                        ref_it = {}
+                        for line in linkedlist.iter(untangled_ll) do
+                          if line.linetype == LineType.REFERENCE and line.str == name then
+                            for _, ref in ipairs(line.tangled) do
+                              table.insert(ref_it, ref[1])
+                            end
+                          end
+                        end
+                      end
+                    end
+                    
+                    l.tangled = {}
+                    if op == "+=" then
+                      for _, ref in ipairs(ref_it) do
+                        local section = linkedlist.insert_before(tangled_ll, ref, {
+                          linetype = LineType.SENTINEL,
+                          prefix = ref.prev.data.prefix,
+                          untangled = insert_after
+                        })
+                        table.insert(l.tangled, section)
+                      end
+                    elseif op == "-=" then
+                      for _, ref in ipairs(ref_it) do
+                        local section = linkedlist.insert_after(tangled_ll, ref, {
+                          linetype = LineType.SENTINEL,
+                          prefix = ref.data.prefix,
+                          untangled = insert_after
+                        })
+                        table.insert(l.tangled, section)
+                      end
+                    end
+                    
+                  
+                    if op == "=" then
+                      local start_file = linkedlist.push_back(tangled_ll, {
+                        linetype = LineType.SENTINEL,
+                        prefix = "",
+                        line = "START " .. name,
+                        untangled = insert_after,
+                      })
+                    
+                      local end_file = linkedlist.push_back(tangled_ll, {
+                        linetype = LineType.SENTINEL,
+                        prefix = "",
+                        line = "END " .. name,
+                        untangled = insert_after,
+                      })
+                    
+                      l.tangled = { start_file }
+                      l.extra_tangled = end_file
+                      root_set[l.str] = insert_after
+                    
+                    end
+                    
+                  
+                    local it = insert_after and insert_after.next
+                    while it ~= end_buf do
+                      local cur_delete = it
+                      if it.data.linetype == LineType.SECTION then
+                        break
+                      elseif cur_delete.data.linetype == LineType.REFERENCE then
+                        for _, ref in ipairs(cur_delete.data.tangled) do
+                          local ref_start, ref_end = unpack(ref)
+                          local copy = ref_start
+                          local quit = false
+                          while copy and not quit do
+                            if copy == ref_end then quit = true end
+                            local to_delete = copy
+                            local untangled = to_delete.data.untangled
+                            if not untangled then
+                              print("Something went south.")
+                            elseif untangled.data.linetype == LineType.TEXT then
+                              untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
+                            elseif untangled.data.linetype == LineType.REFERENCE then
+                              untangled.data.tangled = vim.tbl_filter(function(x) return x[1] ~= to_delete and x[2] ~= to_delete end, untangled.data.tangled)
+                            elseif untangled.data.linetype == LineType.SECTION then
+                              untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
+                            end
+                            
+                            -- linkedlist.remove(tangled_ll, to_delete)
+                            to_delete.data.remove = true
+                            
+                            copy = copy.next
+                          end
+                        end
+                      
+                      else
+                        if cur_delete.data.tangled then
+                          for _, ref in ipairs(cur_delete.data.tangled) do
+                            ref.data.remove = true
+                          end
+                        end
+                        
+                      end
+                      
+                      it = it.next
+                    end
+                    
+                    local it = insert_after and insert_after.next
+                    while it ~= end_buf do
+                      local insert_after = it.prev
+                      if it.data.linetype == LineType.SECTION then
+                        break
+                      elseif it.data.linetype == LineType.REFERENCE then
+                        local l = it.data
+                        local name = l.str
+                        local tangled = {}
+                        if insert_after then
+                          if insert_after.data.linetype == LineType.TEXT then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              table.insert(tangled, ref)
+                            end
+                          elseif insert_after.data.linetype == LineType.REFERENCE then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              local start_ref, end_ref = unpack(ref)
+                              table.insert(tangled, end_ref)
+                            end
+                          elseif insert_after.data.linetype == LineType.SECTION then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              table.insert(tangled, ref)
+                            end
+                          end
+                        end
+                        
+                        l.tangled = {}
+                        for _, ref in ipairs(tangled) do
+                          local ref_start, ref_end = tangleRec(name, sections_ll, tangled_ll, ref, ref.data.prefix .. l.prefix, {})
+                          table.insert(l.tangled, {ref_start, ref_end})
+                          ref_start.data.untangled = it
+                          ref_end.data.untangled = it
+                          ref_end.data.prefix = ref.data.prefix
+                        end
+                        
+                      
+                      else
+                        local l = it.data
+                        local line = l.str
+                        local tangled = {}
+                        if insert_after then
+                          if insert_after.data.linetype == LineType.TEXT then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              table.insert(tangled, ref)
+                            end
+                          elseif insert_after.data.linetype == LineType.REFERENCE then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              local start_ref, end_ref = unpack(ref)
+                              table.insert(tangled, end_ref)
+                            end
+                          elseif insert_after.data.linetype == LineType.SECTION then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              table.insert(tangled, ref)
+                            end
+                          end
+                        end
+                        
+                        l.tangled = {}
+                        if tangled then
+                          for _, ref in ipairs(tangled) do
+                            local new_node = linkedlist.insert_after(tangled_ll, ref, {
+                              linetype = LineType.TANGLED,
+                              prefix = ref.data.prefix,
+                              line = ref.data.prefix .. line,
+                              untangled = it,
+                              insert = true,
+                            })
+                            table.insert(l.tangled, new_node)
+                          end
+                        end
+                        
+                      end
+                      
+                      it = it.next
+                    end
+                    
+                  
+                  elseif string.match(line, "^%s*@[^@]%S*%s*$") then
+                    local _, _, prefix, name = string.find(line, "^(%s*)@(%S+)%s*$")
+                    if name == nil then
+                    	print(line)
+                    end
+                    
+                  	local l = { 
+                  		linetype = LineType.REFERENCE, 
+                  		str = name,
+                  		prefix = prefix
+                  	}
+                  	
+                    local tangled = {}
+                    if insert_after then
+                      if insert_after.data.linetype == LineType.TEXT then
+                        for _, ref in ipairs(insert_after.data.tangled) do
+                          table.insert(tangled, ref)
+                        end
+                      elseif insert_after.data.linetype == LineType.REFERENCE then
+                        for _, ref in ipairs(insert_after.data.tangled) do
+                          local start_ref, end_ref = unpack(ref)
+                          table.insert(tangled, end_ref)
+                        end
+                      elseif insert_after.data.linetype == LineType.SECTION then
+                        for _, ref in ipairs(insert_after.data.tangled) do
+                          table.insert(tangled, ref)
+                        end
+                      end
+                    end
+                    
+                    insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
+                    
+                    local it = insert_after
+                    l.tangled = {}
+                    for _, ref in ipairs(tangled) do
+                      local ref_start, ref_end = tangleRec(name, sections_ll, tangled_ll, ref, ref.data.prefix .. l.prefix, {})
+                      table.insert(l.tangled, {ref_start, ref_end})
+                      ref_start.data.untangled = it
+                      ref_end.data.untangled = it
+                      ref_end.data.prefix = ref.data.prefix
+                    end
+                    
+                  
+                  elseif lnum == 1 and string.match(line, "^##%S+$") then
+                    local name = string.match(line, "^##(%S*)%s*$")
+                    
+                    local l = {
+                      linetype = LineType.ASSEMBLY,
+                      str = name,
+                    }
+                    
+                    insert_after = linkedlist.insert_after(untangled_ll, start_buf, l)
+                    
+                  
+                  else
+                    local l = { 
+                    	linetype = LineType.TEXT, 
+                    	str = line 
+                    }
+                    local tangled = {}
+                    if insert_after then
+                      if insert_after.data.linetype == LineType.TEXT then
+                        for _, ref in ipairs(insert_after.data.tangled) do
+                          table.insert(tangled, ref)
+                        end
+                      elseif insert_after.data.linetype == LineType.REFERENCE then
+                        for _, ref in ipairs(insert_after.data.tangled) do
+                          local start_ref, end_ref = unpack(ref)
+                          table.insert(tangled, end_ref)
+                        end
+                      elseif insert_after.data.linetype == LineType.SECTION then
+                        for _, ref in ipairs(insert_after.data.tangled) do
+                          table.insert(tangled, ref)
+                        end
+                      end
+                    end
+                    
+                    insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
+                    
+                    local it = insert_after
+                    l.tangled = {}
+                    if tangled then
+                      for _, ref in ipairs(tangled) do
+                        local new_node = linkedlist.insert_after(tangled_ll, ref, {
+                          linetype = LineType.TANGLED,
+                          prefix = ref.data.prefix,
+                          line = ref.data.prefix .. line,
+                          untangled = it,
+                          insert = true,
+                        })
+                        table.insert(l.tangled, new_node)
+                      end
+                    end
+                    
+                  end
+                  
+              		lnum = lnum + 1
+              	end
+              	f:close()
+              end
+              
+            end
         	end
         end
         
@@ -1185,6 +1189,7 @@ function M.attach()
   
   -- @fill_output_buf
   -- @display_tangle_output
+  -- @display_untangle_output
   
   local lnum = 1
   local it = start_buf.next
@@ -1541,7 +1546,6 @@ function M.attach()
           parts_ll = asm_namespaces[name].parts_ll
           buf_asm = name
           
-          
           if type(name) ~= "number" and check_links then
             path = vim.fn.fnamemodify(path, ":p")
             local parts = vim.split(vim.fn.glob(path .. assembly_tail .. ".*.t"), "\n")
@@ -1550,366 +1554,371 @@ function M.attach()
             for _, part in ipairs(parts) do
             	if link_name ~= part then
             		local f = io.open(part, "r")
-            		local origin_path = f:read("*line")
-            		f:close()
-            		
-            		local f = io.open(origin_path, "r")
+            		local origin_path
             		if f then
-            		  local start_buf = linkedlist.push_back(untangled_ll, {
-            		    linetype = LineType.BUF_DELIM,
-            		    str = "START " .. origin_path,
-            		  })
-            		  
-            		  local end_buf = linkedlist.push_back(untangled_ll, {
-            		    linetype = LineType.BUF_DELIM,
-            		    str = "END " .. origin_path,
-            		  })
-            		  
-            		  linkedlist.push_back(parts_ll, {
-            		    start_buf = start_buf,
-            		    end_buf = end_buf,
-            		    name = origin_path,
-            		  })
-            		  
-            			local lnum = 1
-            		  local insert_after = start_buf
-            			while true do
-            				local line = f:read("*line")
-            				if not line then break end
-            		    if string.match(line, "^@[^@]%S*[+-]?=%s*$") then
-            		      local _, _, name, op = string.find(line, "^@(%S-)([+-]?=)%s*$")
-            		      
-            		      local l = { linetype = LineType.SECTION, str = name, op = op }
-            		      
-            		      insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
-            		      
-            		      local it = insert_after and insert_after.prev
-            		      while it ~= start_buf do
-            		        if it.data.linetype == LineType.SECTION and it.data.str == name then
-            		          break
-            		        end
-            		        it = it.prev
-            		      end
-            		      
-            		      local section
-            		      if it ~= start_buf then
-            		        section = linkedlist.insert_after(sections_ll[name], it.data.section, insert_after)
-            		        insert_after.data.section = section
-            		      else
-            		        sections_ll[name] = sections_ll[name] or {}
-            		        section = linkedlist.push_front(sections_ll[name], insert_after)
-            		      end
-            		      l.section = section
-            		      
-            		      local ref_it
-            		      if op == "+=" then
-            		        section = section.next
-            		        while section do
-            		          local it = section.data
-            		          if it.data.op == "+=" then
-            		            ref_it = it.data.tangled
-            		          end
-            		          section = section.next
-            		        end
-            		      elseif op == "-=" then
-            		        section = section.prev
-            		        while section do
-            		          local it = section.data
-            		          if it.data.op == "-=" then
-            		            ref_it = it.data.tangled
-            		            break
-            		          end
-            		          section = section.prev
-            		        end
-            		      end
-            		      
-            		      if not ref_it then
-            		        if op == "+=" then
-            		          ref_it = {}
-            		          for line in linkedlist.iter(untangled_ll) do
-            		            if line.linetype == LineType.REFERENCE and line.str == name then
-            		              for _, ref in ipairs(line.tangled) do
-            		                table.insert(ref_it, ref[2])
-            		              end
-            		            end
-            		          end
-            		        elseif op == "-=" then
-            		          ref_it = {}
-            		          for line in linkedlist.iter(untangled_ll) do
-            		            if line.linetype == LineType.REFERENCE and line.str == name then
-            		              for _, ref in ipairs(line.tangled) do
-            		                table.insert(ref_it, ref[1])
-            		              end
-            		            end
-            		          end
-            		        end
-            		      end
-            		      
-            		      l.tangled = {}
-            		      if op == "+=" then
-            		        for _, ref in ipairs(ref_it) do
-            		          local section = linkedlist.insert_before(tangled_ll, ref, {
-            		            linetype = LineType.SENTINEL,
-            		            prefix = ref.prev.data.prefix,
-            		            untangled = insert_after
-            		          })
-            		          table.insert(l.tangled, section)
-            		        end
-            		      elseif op == "-=" then
-            		        for _, ref in ipairs(ref_it) do
-            		          local section = linkedlist.insert_after(tangled_ll, ref, {
-            		            linetype = LineType.SENTINEL,
-            		            prefix = ref.data.prefix,
-            		            untangled = insert_after
-            		          })
-            		          table.insert(l.tangled, section)
-            		        end
-            		      end
-            		      
-            		    
-            		      if op == "=" then
-            		        local start_file = linkedlist.push_back(tangled_ll, {
-            		          linetype = LineType.SENTINEL,
-            		          prefix = "",
-            		          line = "START " .. name,
-            		          untangled = insert_after,
-            		        })
-            		      
-            		        local end_file = linkedlist.push_back(tangled_ll, {
-            		          linetype = LineType.SENTINEL,
-            		          prefix = "",
-            		          line = "END " .. name,
-            		          untangled = insert_after,
-            		        })
-            		      
-            		        l.tangled = { start_file }
-            		        l.extra_tangled = end_file
-            		        root_set[l.str] = insert_after
-            		      
-            		      end
-            		      
-            		    
-            		      local it = insert_after and insert_after.next
-            		      while it ~= end_buf do
-            		        local cur_delete = it
-            		        if it.data.linetype == LineType.SECTION then
-            		          break
-            		        elseif cur_delete.data.linetype == LineType.REFERENCE then
-            		          for _, ref in ipairs(cur_delete.data.tangled) do
-            		            local ref_start, ref_end = unpack(ref)
-            		            local copy = ref_start
-            		            local quit = false
-            		            while copy and not quit do
-            		              if copy == ref_end then quit = true end
-            		              local to_delete = copy
-            		              local untangled = to_delete.data.untangled
-            		              if not untangled then
-            		                print("Something went south.")
-            		              elseif untangled.data.linetype == LineType.TEXT then
-            		                untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
-            		              elseif untangled.data.linetype == LineType.REFERENCE then
-            		                untangled.data.tangled = vim.tbl_filter(function(x) return x[1] ~= to_delete and x[2] ~= to_delete end, untangled.data.tangled)
-            		              elseif untangled.data.linetype == LineType.SECTION then
-            		                untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
-            		              end
-            		              
-            		              -- linkedlist.remove(tangled_ll, to_delete)
-            		              to_delete.data.remove = true
-            		              
-            		              copy = copy.next
-            		            end
-            		          end
-            		        
-            		        else
-            		          if cur_delete.data.tangled then
-            		            for _, ref in ipairs(cur_delete.data.tangled) do
-            		              ref.data.remove = true
-            		            end
-            		          end
-            		          
-            		        end
-            		        
-            		        it = it.next
-            		      end
-            		      
-            		      local it = insert_after and insert_after.next
-            		      while it ~= end_buf do
-            		        local insert_after = it.prev
-            		        if it.data.linetype == LineType.SECTION then
-            		          break
-            		        elseif it.data.linetype == LineType.REFERENCE then
-            		          local l = it.data
-            		          local name = l.str
-            		          local tangled = {}
-            		          if insert_after then
-            		            if insert_after.data.linetype == LineType.TEXT then
-            		              for _, ref in ipairs(insert_after.data.tangled) do
-            		                table.insert(tangled, ref)
-            		              end
-            		            elseif insert_after.data.linetype == LineType.REFERENCE then
-            		              for _, ref in ipairs(insert_after.data.tangled) do
-            		                local start_ref, end_ref = unpack(ref)
-            		                table.insert(tangled, end_ref)
-            		              end
-            		            elseif insert_after.data.linetype == LineType.SECTION then
-            		              for _, ref in ipairs(insert_after.data.tangled) do
-            		                table.insert(tangled, ref)
-            		              end
-            		            end
-            		          end
-            		          
-            		          l.tangled = {}
-            		          for _, ref in ipairs(tangled) do
-            		            local ref_start, ref_end = tangleRec(name, sections_ll, tangled_ll, ref, ref.data.prefix .. l.prefix, {})
-            		            table.insert(l.tangled, {ref_start, ref_end})
-            		            ref_start.data.untangled = it
-            		            ref_end.data.untangled = it
-            		            ref_end.data.prefix = ref.data.prefix
-            		          end
-            		          
-            		        
-            		        else
-            		          local l = it.data
-            		          local line = l.str
-            		          local tangled = {}
-            		          if insert_after then
-            		            if insert_after.data.linetype == LineType.TEXT then
-            		              for _, ref in ipairs(insert_after.data.tangled) do
-            		                table.insert(tangled, ref)
-            		              end
-            		            elseif insert_after.data.linetype == LineType.REFERENCE then
-            		              for _, ref in ipairs(insert_after.data.tangled) do
-            		                local start_ref, end_ref = unpack(ref)
-            		                table.insert(tangled, end_ref)
-            		              end
-            		            elseif insert_after.data.linetype == LineType.SECTION then
-            		              for _, ref in ipairs(insert_after.data.tangled) do
-            		                table.insert(tangled, ref)
-            		              end
-            		            end
-            		          end
-            		          
-            		          l.tangled = {}
-            		          if tangled then
-            		            for _, ref in ipairs(tangled) do
-            		              local new_node = linkedlist.insert_after(tangled_ll, ref, {
-            		                linetype = LineType.TANGLED,
-            		                prefix = ref.data.prefix,
-            		                line = ref.data.prefix .. line,
-            		                untangled = it,
-            		                insert = true,
-            		              })
-            		              table.insert(l.tangled, new_node)
-            		            end
-            		          end
-            		          
-            		        end
-            		        
-            		        it = it.next
-            		      end
-            		      
-            		    
-            		    elseif string.match(line, "^%s*@[^@]%S*%s*$") then
-            		      local _, _, prefix, name = string.find(line, "^(%s*)@(%S+)%s*$")
-            		      if name == nil then
-            		      	print(line)
-            		      end
-            		      
-            		    	local l = { 
-            		    		linetype = LineType.REFERENCE, 
-            		    		str = name,
-            		    		prefix = prefix
-            		    	}
-            		    	
-            		      local tangled = {}
-            		      if insert_after then
-            		        if insert_after.data.linetype == LineType.TEXT then
-            		          for _, ref in ipairs(insert_after.data.tangled) do
-            		            table.insert(tangled, ref)
-            		          end
-            		        elseif insert_after.data.linetype == LineType.REFERENCE then
-            		          for _, ref in ipairs(insert_after.data.tangled) do
-            		            local start_ref, end_ref = unpack(ref)
-            		            table.insert(tangled, end_ref)
-            		          end
-            		        elseif insert_after.data.linetype == LineType.SECTION then
-            		          for _, ref in ipairs(insert_after.data.tangled) do
-            		            table.insert(tangled, ref)
-            		          end
-            		        end
-            		      end
-            		      
-            		      insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
-            		      
-            		      local it = insert_after
-            		      l.tangled = {}
-            		      for _, ref in ipairs(tangled) do
-            		        local ref_start, ref_end = tangleRec(name, sections_ll, tangled_ll, ref, ref.data.prefix .. l.prefix, {})
-            		        table.insert(l.tangled, {ref_start, ref_end})
-            		        ref_start.data.untangled = it
-            		        ref_end.data.untangled = it
-            		        ref_end.data.prefix = ref.data.prefix
-            		      end
-            		      
-            		    
-            		    elseif lnum == 1 and string.match(line, "^##%S+$") then
-            		      local name = string.match(line, "^##(%S*)%s*$")
-            		      
-            		      local l = {
-            		        linetype = LineType.ASSEMBLY,
-            		        str = name,
-            		      }
-            		      
-            		      insert_after = linkedlist.insert_after(untangled_ll, start_buf, l)
-            		      
-            		    
-            		    else
-            		      local l = { 
-            		      	linetype = LineType.TEXT, 
-            		      	str = line 
-            		      }
-            		      local tangled = {}
-            		      if insert_after then
-            		        if insert_after.data.linetype == LineType.TEXT then
-            		          for _, ref in ipairs(insert_after.data.tangled) do
-            		            table.insert(tangled, ref)
-            		          end
-            		        elseif insert_after.data.linetype == LineType.REFERENCE then
-            		          for _, ref in ipairs(insert_after.data.tangled) do
-            		            local start_ref, end_ref = unpack(ref)
-            		            table.insert(tangled, end_ref)
-            		          end
-            		        elseif insert_after.data.linetype == LineType.SECTION then
-            		          for _, ref in ipairs(insert_after.data.tangled) do
-            		            table.insert(tangled, ref)
-            		          end
-            		        end
-            		      end
-            		      
-            		      insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
-            		      
-            		      local it = insert_after
-            		      l.tangled = {}
-            		      if tangled then
-            		        for _, ref in ipairs(tangled) do
-            		          local new_node = linkedlist.insert_after(tangled_ll, ref, {
-            		            linetype = LineType.TANGLED,
-            		            prefix = ref.data.prefix,
-            		            line = ref.data.prefix .. line,
-            		            untangled = it,
-            		            insert = true,
-            		          })
-            		          table.insert(l.tangled, new_node)
-            		        end
-            		      end
-            		      
-            		    end
-            		    
-            				lnum = lnum + 1
-            			end
-            			f:close()
+            		  origin_path = f:read("*line")
+            		  f:close()
             		end
             		
+                if origin_path then
+                  local f = io.open(origin_path, "r")
+                  if f then
+                    local start_buf = linkedlist.push_back(untangled_ll, {
+                      linetype = LineType.BUF_DELIM,
+                      str = "START " .. origin_path,
+                    })
+                    
+                    local end_buf = linkedlist.push_back(untangled_ll, {
+                      linetype = LineType.BUF_DELIM,
+                      str = "END " .. origin_path,
+                    })
+                    
+                    linkedlist.push_back(parts_ll, {
+                      start_buf = start_buf,
+                      end_buf = end_buf,
+                      name = origin_path,
+                    })
+                    
+                  	local lnum = 1
+                    local insert_after = start_buf
+                  	while true do
+                  		local line = f:read("*line")
+                  		if not line then break end
+                      if string.match(line, "^@[^@]%S*[+-]?=%s*$") then
+                        local _, _, name, op = string.find(line, "^@(%S-)([+-]?=)%s*$")
+                        
+                        local l = { linetype = LineType.SECTION, str = name, op = op }
+                        
+                        insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
+                        
+                        local it = insert_after and insert_after.prev
+                        while it ~= start_buf do
+                          if it.data.linetype == LineType.SECTION and it.data.str == name then
+                            break
+                          end
+                          it = it.prev
+                        end
+                        
+                        local section
+                        if it ~= start_buf then
+                          section = linkedlist.insert_after(sections_ll[name], it.data.section, insert_after)
+                          insert_after.data.section = section
+                        else
+                          sections_ll[name] = sections_ll[name] or {}
+                          section = linkedlist.push_front(sections_ll[name], insert_after)
+                        end
+                        l.section = section
+                        
+                        local ref_it
+                        if op == "+=" then
+                          section = section.next
+                          while section do
+                            local it = section.data
+                            if it.data.op == "+=" then
+                              ref_it = it.data.tangled
+                            end
+                            section = section.next
+                          end
+                        elseif op == "-=" then
+                          section = section.prev
+                          while section do
+                            local it = section.data
+                            if it.data.op == "-=" then
+                              ref_it = it.data.tangled
+                              break
+                            end
+                            section = section.prev
+                          end
+                        end
+                        
+                        if not ref_it then
+                          if op == "+=" then
+                            ref_it = {}
+                            for line in linkedlist.iter(untangled_ll) do
+                              if line.linetype == LineType.REFERENCE and line.str == name then
+                                for _, ref in ipairs(line.tangled) do
+                                  table.insert(ref_it, ref[2])
+                                end
+                              end
+                            end
+                          elseif op == "-=" then
+                            ref_it = {}
+                            for line in linkedlist.iter(untangled_ll) do
+                              if line.linetype == LineType.REFERENCE and line.str == name then
+                                for _, ref in ipairs(line.tangled) do
+                                  table.insert(ref_it, ref[1])
+                                end
+                              end
+                            end
+                          end
+                        end
+                        
+                        l.tangled = {}
+                        if op == "+=" then
+                          for _, ref in ipairs(ref_it) do
+                            local section = linkedlist.insert_before(tangled_ll, ref, {
+                              linetype = LineType.SENTINEL,
+                              prefix = ref.prev.data.prefix,
+                              untangled = insert_after
+                            })
+                            table.insert(l.tangled, section)
+                          end
+                        elseif op == "-=" then
+                          for _, ref in ipairs(ref_it) do
+                            local section = linkedlist.insert_after(tangled_ll, ref, {
+                              linetype = LineType.SENTINEL,
+                              prefix = ref.data.prefix,
+                              untangled = insert_after
+                            })
+                            table.insert(l.tangled, section)
+                          end
+                        end
+                        
+                      
+                        if op == "=" then
+                          local start_file = linkedlist.push_back(tangled_ll, {
+                            linetype = LineType.SENTINEL,
+                            prefix = "",
+                            line = "START " .. name,
+                            untangled = insert_after,
+                          })
+                        
+                          local end_file = linkedlist.push_back(tangled_ll, {
+                            linetype = LineType.SENTINEL,
+                            prefix = "",
+                            line = "END " .. name,
+                            untangled = insert_after,
+                          })
+                        
+                          l.tangled = { start_file }
+                          l.extra_tangled = end_file
+                          root_set[l.str] = insert_after
+                        
+                        end
+                        
+                      
+                        local it = insert_after and insert_after.next
+                        while it ~= end_buf do
+                          local cur_delete = it
+                          if it.data.linetype == LineType.SECTION then
+                            break
+                          elseif cur_delete.data.linetype == LineType.REFERENCE then
+                            for _, ref in ipairs(cur_delete.data.tangled) do
+                              local ref_start, ref_end = unpack(ref)
+                              local copy = ref_start
+                              local quit = false
+                              while copy and not quit do
+                                if copy == ref_end then quit = true end
+                                local to_delete = copy
+                                local untangled = to_delete.data.untangled
+                                if not untangled then
+                                  print("Something went south.")
+                                elseif untangled.data.linetype == LineType.TEXT then
+                                  untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
+                                elseif untangled.data.linetype == LineType.REFERENCE then
+                                  untangled.data.tangled = vim.tbl_filter(function(x) return x[1] ~= to_delete and x[2] ~= to_delete end, untangled.data.tangled)
+                                elseif untangled.data.linetype == LineType.SECTION then
+                                  untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
+                                end
+                                
+                                -- linkedlist.remove(tangled_ll, to_delete)
+                                to_delete.data.remove = true
+                                
+                                copy = copy.next
+                              end
+                            end
+                          
+                          else
+                            if cur_delete.data.tangled then
+                              for _, ref in ipairs(cur_delete.data.tangled) do
+                                ref.data.remove = true
+                              end
+                            end
+                            
+                          end
+                          
+                          it = it.next
+                        end
+                        
+                        local it = insert_after and insert_after.next
+                        while it ~= end_buf do
+                          local insert_after = it.prev
+                          if it.data.linetype == LineType.SECTION then
+                            break
+                          elseif it.data.linetype == LineType.REFERENCE then
+                            local l = it.data
+                            local name = l.str
+                            local tangled = {}
+                            if insert_after then
+                              if insert_after.data.linetype == LineType.TEXT then
+                                for _, ref in ipairs(insert_after.data.tangled) do
+                                  table.insert(tangled, ref)
+                                end
+                              elseif insert_after.data.linetype == LineType.REFERENCE then
+                                for _, ref in ipairs(insert_after.data.tangled) do
+                                  local start_ref, end_ref = unpack(ref)
+                                  table.insert(tangled, end_ref)
+                                end
+                              elseif insert_after.data.linetype == LineType.SECTION then
+                                for _, ref in ipairs(insert_after.data.tangled) do
+                                  table.insert(tangled, ref)
+                                end
+                              end
+                            end
+                            
+                            l.tangled = {}
+                            for _, ref in ipairs(tangled) do
+                              local ref_start, ref_end = tangleRec(name, sections_ll, tangled_ll, ref, ref.data.prefix .. l.prefix, {})
+                              table.insert(l.tangled, {ref_start, ref_end})
+                              ref_start.data.untangled = it
+                              ref_end.data.untangled = it
+                              ref_end.data.prefix = ref.data.prefix
+                            end
+                            
+                          
+                          else
+                            local l = it.data
+                            local line = l.str
+                            local tangled = {}
+                            if insert_after then
+                              if insert_after.data.linetype == LineType.TEXT then
+                                for _, ref in ipairs(insert_after.data.tangled) do
+                                  table.insert(tangled, ref)
+                                end
+                              elseif insert_after.data.linetype == LineType.REFERENCE then
+                                for _, ref in ipairs(insert_after.data.tangled) do
+                                  local start_ref, end_ref = unpack(ref)
+                                  table.insert(tangled, end_ref)
+                                end
+                              elseif insert_after.data.linetype == LineType.SECTION then
+                                for _, ref in ipairs(insert_after.data.tangled) do
+                                  table.insert(tangled, ref)
+                                end
+                              end
+                            end
+                            
+                            l.tangled = {}
+                            if tangled then
+                              for _, ref in ipairs(tangled) do
+                                local new_node = linkedlist.insert_after(tangled_ll, ref, {
+                                  linetype = LineType.TANGLED,
+                                  prefix = ref.data.prefix,
+                                  line = ref.data.prefix .. line,
+                                  untangled = it,
+                                  insert = true,
+                                })
+                                table.insert(l.tangled, new_node)
+                              end
+                            end
+                            
+                          end
+                          
+                          it = it.next
+                        end
+                        
+                      
+                      elseif string.match(line, "^%s*@[^@]%S*%s*$") then
+                        local _, _, prefix, name = string.find(line, "^(%s*)@(%S+)%s*$")
+                        if name == nil then
+                        	print(line)
+                        end
+                        
+                      	local l = { 
+                      		linetype = LineType.REFERENCE, 
+                      		str = name,
+                      		prefix = prefix
+                      	}
+                      	
+                        local tangled = {}
+                        if insert_after then
+                          if insert_after.data.linetype == LineType.TEXT then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              table.insert(tangled, ref)
+                            end
+                          elseif insert_after.data.linetype == LineType.REFERENCE then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              local start_ref, end_ref = unpack(ref)
+                              table.insert(tangled, end_ref)
+                            end
+                          elseif insert_after.data.linetype == LineType.SECTION then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              table.insert(tangled, ref)
+                            end
+                          end
+                        end
+                        
+                        insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
+                        
+                        local it = insert_after
+                        l.tangled = {}
+                        for _, ref in ipairs(tangled) do
+                          local ref_start, ref_end = tangleRec(name, sections_ll, tangled_ll, ref, ref.data.prefix .. l.prefix, {})
+                          table.insert(l.tangled, {ref_start, ref_end})
+                          ref_start.data.untangled = it
+                          ref_end.data.untangled = it
+                          ref_end.data.prefix = ref.data.prefix
+                        end
+                        
+                      
+                      elseif lnum == 1 and string.match(line, "^##%S+$") then
+                        local name = string.match(line, "^##(%S*)%s*$")
+                        
+                        local l = {
+                          linetype = LineType.ASSEMBLY,
+                          str = name,
+                        }
+                        
+                        insert_after = linkedlist.insert_after(untangled_ll, start_buf, l)
+                        
+                      
+                      else
+                        local l = { 
+                        	linetype = LineType.TEXT, 
+                        	str = line 
+                        }
+                        local tangled = {}
+                        if insert_after then
+                          if insert_after.data.linetype == LineType.TEXT then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              table.insert(tangled, ref)
+                            end
+                          elseif insert_after.data.linetype == LineType.REFERENCE then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              local start_ref, end_ref = unpack(ref)
+                              table.insert(tangled, end_ref)
+                            end
+                          elseif insert_after.data.linetype == LineType.SECTION then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              table.insert(tangled, ref)
+                            end
+                          end
+                        end
+                        
+                        insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
+                        
+                        local it = insert_after
+                        l.tangled = {}
+                        if tangled then
+                          for _, ref in ipairs(tangled) do
+                            local new_node = linkedlist.insert_after(tangled_ll, ref, {
+                              linetype = LineType.TANGLED,
+                              prefix = ref.data.prefix,
+                              line = ref.data.prefix .. line,
+                              untangled = it,
+                              insert = true,
+                            })
+                            table.insert(l.tangled, new_node)
+                          end
+                        end
+                        
+                      end
+                      
+                  		lnum = lnum + 1
+                  	end
+                  	f:close()
+                  end
+                  
+                end
             	end
             end
             
@@ -2174,6 +2183,7 @@ function M.attach()
           end
           
           cur_delete = start_buf.next
+          delete_this = cur_delete.next
         else
           if cur_delete.data.tangled then
             for _, ref in ipairs(cur_delete.data.tangled) do
@@ -2600,7 +2610,6 @@ function M.attach()
           parts_ll = asm_namespaces[name].parts_ll
           buf_asm = name
           
-          
           if type(name) ~= "number" and check_links then
             path = vim.fn.fnamemodify(path, ":p")
             local parts = vim.split(vim.fn.glob(path .. assembly_tail .. ".*.t"), "\n")
@@ -2609,366 +2618,371 @@ function M.attach()
             for _, part in ipairs(parts) do
             	if link_name ~= part then
             		local f = io.open(part, "r")
-            		local origin_path = f:read("*line")
-            		f:close()
-            		
-            		local f = io.open(origin_path, "r")
+            		local origin_path
             		if f then
-            		  local start_buf = linkedlist.push_back(untangled_ll, {
-            		    linetype = LineType.BUF_DELIM,
-            		    str = "START " .. origin_path,
-            		  })
-            		  
-            		  local end_buf = linkedlist.push_back(untangled_ll, {
-            		    linetype = LineType.BUF_DELIM,
-            		    str = "END " .. origin_path,
-            		  })
-            		  
-            		  linkedlist.push_back(parts_ll, {
-            		    start_buf = start_buf,
-            		    end_buf = end_buf,
-            		    name = origin_path,
-            		  })
-            		  
-            			local lnum = 1
-            		  local insert_after = start_buf
-            			while true do
-            				local line = f:read("*line")
-            				if not line then break end
-            		    if string.match(line, "^@[^@]%S*[+-]?=%s*$") then
-            		      local _, _, name, op = string.find(line, "^@(%S-)([+-]?=)%s*$")
-            		      
-            		      local l = { linetype = LineType.SECTION, str = name, op = op }
-            		      
-            		      insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
-            		      
-            		      local it = insert_after and insert_after.prev
-            		      while it ~= start_buf do
-            		        if it.data.linetype == LineType.SECTION and it.data.str == name then
-            		          break
-            		        end
-            		        it = it.prev
-            		      end
-            		      
-            		      local section
-            		      if it ~= start_buf then
-            		        section = linkedlist.insert_after(sections_ll[name], it.data.section, insert_after)
-            		        insert_after.data.section = section
-            		      else
-            		        sections_ll[name] = sections_ll[name] or {}
-            		        section = linkedlist.push_front(sections_ll[name], insert_after)
-            		      end
-            		      l.section = section
-            		      
-            		      local ref_it
-            		      if op == "+=" then
-            		        section = section.next
-            		        while section do
-            		          local it = section.data
-            		          if it.data.op == "+=" then
-            		            ref_it = it.data.tangled
-            		          end
-            		          section = section.next
-            		        end
-            		      elseif op == "-=" then
-            		        section = section.prev
-            		        while section do
-            		          local it = section.data
-            		          if it.data.op == "-=" then
-            		            ref_it = it.data.tangled
-            		            break
-            		          end
-            		          section = section.prev
-            		        end
-            		      end
-            		      
-            		      if not ref_it then
-            		        if op == "+=" then
-            		          ref_it = {}
-            		          for line in linkedlist.iter(untangled_ll) do
-            		            if line.linetype == LineType.REFERENCE and line.str == name then
-            		              for _, ref in ipairs(line.tangled) do
-            		                table.insert(ref_it, ref[2])
-            		              end
-            		            end
-            		          end
-            		        elseif op == "-=" then
-            		          ref_it = {}
-            		          for line in linkedlist.iter(untangled_ll) do
-            		            if line.linetype == LineType.REFERENCE and line.str == name then
-            		              for _, ref in ipairs(line.tangled) do
-            		                table.insert(ref_it, ref[1])
-            		              end
-            		            end
-            		          end
-            		        end
-            		      end
-            		      
-            		      l.tangled = {}
-            		      if op == "+=" then
-            		        for _, ref in ipairs(ref_it) do
-            		          local section = linkedlist.insert_before(tangled_ll, ref, {
-            		            linetype = LineType.SENTINEL,
-            		            prefix = ref.prev.data.prefix,
-            		            untangled = insert_after
-            		          })
-            		          table.insert(l.tangled, section)
-            		        end
-            		      elseif op == "-=" then
-            		        for _, ref in ipairs(ref_it) do
-            		          local section = linkedlist.insert_after(tangled_ll, ref, {
-            		            linetype = LineType.SENTINEL,
-            		            prefix = ref.data.prefix,
-            		            untangled = insert_after
-            		          })
-            		          table.insert(l.tangled, section)
-            		        end
-            		      end
-            		      
-            		    
-            		      if op == "=" then
-            		        local start_file = linkedlist.push_back(tangled_ll, {
-            		          linetype = LineType.SENTINEL,
-            		          prefix = "",
-            		          line = "START " .. name,
-            		          untangled = insert_after,
-            		        })
-            		      
-            		        local end_file = linkedlist.push_back(tangled_ll, {
-            		          linetype = LineType.SENTINEL,
-            		          prefix = "",
-            		          line = "END " .. name,
-            		          untangled = insert_after,
-            		        })
-            		      
-            		        l.tangled = { start_file }
-            		        l.extra_tangled = end_file
-            		        root_set[l.str] = insert_after
-            		      
-            		      end
-            		      
-            		    
-            		      local it = insert_after and insert_after.next
-            		      while it ~= end_buf do
-            		        local cur_delete = it
-            		        if it.data.linetype == LineType.SECTION then
-            		          break
-            		        elseif cur_delete.data.linetype == LineType.REFERENCE then
-            		          for _, ref in ipairs(cur_delete.data.tangled) do
-            		            local ref_start, ref_end = unpack(ref)
-            		            local copy = ref_start
-            		            local quit = false
-            		            while copy and not quit do
-            		              if copy == ref_end then quit = true end
-            		              local to_delete = copy
-            		              local untangled = to_delete.data.untangled
-            		              if not untangled then
-            		                print("Something went south.")
-            		              elseif untangled.data.linetype == LineType.TEXT then
-            		                untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
-            		              elseif untangled.data.linetype == LineType.REFERENCE then
-            		                untangled.data.tangled = vim.tbl_filter(function(x) return x[1] ~= to_delete and x[2] ~= to_delete end, untangled.data.tangled)
-            		              elseif untangled.data.linetype == LineType.SECTION then
-            		                untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
-            		              end
-            		              
-            		              -- linkedlist.remove(tangled_ll, to_delete)
-            		              to_delete.data.remove = true
-            		              
-            		              copy = copy.next
-            		            end
-            		          end
-            		        
-            		        else
-            		          if cur_delete.data.tangled then
-            		            for _, ref in ipairs(cur_delete.data.tangled) do
-            		              ref.data.remove = true
-            		            end
-            		          end
-            		          
-            		        end
-            		        
-            		        it = it.next
-            		      end
-            		      
-            		      local it = insert_after and insert_after.next
-            		      while it ~= end_buf do
-            		        local insert_after = it.prev
-            		        if it.data.linetype == LineType.SECTION then
-            		          break
-            		        elseif it.data.linetype == LineType.REFERENCE then
-            		          local l = it.data
-            		          local name = l.str
-            		          local tangled = {}
-            		          if insert_after then
-            		            if insert_after.data.linetype == LineType.TEXT then
-            		              for _, ref in ipairs(insert_after.data.tangled) do
-            		                table.insert(tangled, ref)
-            		              end
-            		            elseif insert_after.data.linetype == LineType.REFERENCE then
-            		              for _, ref in ipairs(insert_after.data.tangled) do
-            		                local start_ref, end_ref = unpack(ref)
-            		                table.insert(tangled, end_ref)
-            		              end
-            		            elseif insert_after.data.linetype == LineType.SECTION then
-            		              for _, ref in ipairs(insert_after.data.tangled) do
-            		                table.insert(tangled, ref)
-            		              end
-            		            end
-            		          end
-            		          
-            		          l.tangled = {}
-            		          for _, ref in ipairs(tangled) do
-            		            local ref_start, ref_end = tangleRec(name, sections_ll, tangled_ll, ref, ref.data.prefix .. l.prefix, {})
-            		            table.insert(l.tangled, {ref_start, ref_end})
-            		            ref_start.data.untangled = it
-            		            ref_end.data.untangled = it
-            		            ref_end.data.prefix = ref.data.prefix
-            		          end
-            		          
-            		        
-            		        else
-            		          local l = it.data
-            		          local line = l.str
-            		          local tangled = {}
-            		          if insert_after then
-            		            if insert_after.data.linetype == LineType.TEXT then
-            		              for _, ref in ipairs(insert_after.data.tangled) do
-            		                table.insert(tangled, ref)
-            		              end
-            		            elseif insert_after.data.linetype == LineType.REFERENCE then
-            		              for _, ref in ipairs(insert_after.data.tangled) do
-            		                local start_ref, end_ref = unpack(ref)
-            		                table.insert(tangled, end_ref)
-            		              end
-            		            elseif insert_after.data.linetype == LineType.SECTION then
-            		              for _, ref in ipairs(insert_after.data.tangled) do
-            		                table.insert(tangled, ref)
-            		              end
-            		            end
-            		          end
-            		          
-            		          l.tangled = {}
-            		          if tangled then
-            		            for _, ref in ipairs(tangled) do
-            		              local new_node = linkedlist.insert_after(tangled_ll, ref, {
-            		                linetype = LineType.TANGLED,
-            		                prefix = ref.data.prefix,
-            		                line = ref.data.prefix .. line,
-            		                untangled = it,
-            		                insert = true,
-            		              })
-            		              table.insert(l.tangled, new_node)
-            		            end
-            		          end
-            		          
-            		        end
-            		        
-            		        it = it.next
-            		      end
-            		      
-            		    
-            		    elseif string.match(line, "^%s*@[^@]%S*%s*$") then
-            		      local _, _, prefix, name = string.find(line, "^(%s*)@(%S+)%s*$")
-            		      if name == nil then
-            		      	print(line)
-            		      end
-            		      
-            		    	local l = { 
-            		    		linetype = LineType.REFERENCE, 
-            		    		str = name,
-            		    		prefix = prefix
-            		    	}
-            		    	
-            		      local tangled = {}
-            		      if insert_after then
-            		        if insert_after.data.linetype == LineType.TEXT then
-            		          for _, ref in ipairs(insert_after.data.tangled) do
-            		            table.insert(tangled, ref)
-            		          end
-            		        elseif insert_after.data.linetype == LineType.REFERENCE then
-            		          for _, ref in ipairs(insert_after.data.tangled) do
-            		            local start_ref, end_ref = unpack(ref)
-            		            table.insert(tangled, end_ref)
-            		          end
-            		        elseif insert_after.data.linetype == LineType.SECTION then
-            		          for _, ref in ipairs(insert_after.data.tangled) do
-            		            table.insert(tangled, ref)
-            		          end
-            		        end
-            		      end
-            		      
-            		      insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
-            		      
-            		      local it = insert_after
-            		      l.tangled = {}
-            		      for _, ref in ipairs(tangled) do
-            		        local ref_start, ref_end = tangleRec(name, sections_ll, tangled_ll, ref, ref.data.prefix .. l.prefix, {})
-            		        table.insert(l.tangled, {ref_start, ref_end})
-            		        ref_start.data.untangled = it
-            		        ref_end.data.untangled = it
-            		        ref_end.data.prefix = ref.data.prefix
-            		      end
-            		      
-            		    
-            		    elseif lnum == 1 and string.match(line, "^##%S+$") then
-            		      local name = string.match(line, "^##(%S*)%s*$")
-            		      
-            		      local l = {
-            		        linetype = LineType.ASSEMBLY,
-            		        str = name,
-            		      }
-            		      
-            		      insert_after = linkedlist.insert_after(untangled_ll, start_buf, l)
-            		      
-            		    
-            		    else
-            		      local l = { 
-            		      	linetype = LineType.TEXT, 
-            		      	str = line 
-            		      }
-            		      local tangled = {}
-            		      if insert_after then
-            		        if insert_after.data.linetype == LineType.TEXT then
-            		          for _, ref in ipairs(insert_after.data.tangled) do
-            		            table.insert(tangled, ref)
-            		          end
-            		        elseif insert_after.data.linetype == LineType.REFERENCE then
-            		          for _, ref in ipairs(insert_after.data.tangled) do
-            		            local start_ref, end_ref = unpack(ref)
-            		            table.insert(tangled, end_ref)
-            		          end
-            		        elseif insert_after.data.linetype == LineType.SECTION then
-            		          for _, ref in ipairs(insert_after.data.tangled) do
-            		            table.insert(tangled, ref)
-            		          end
-            		        end
-            		      end
-            		      
-            		      insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
-            		      
-            		      local it = insert_after
-            		      l.tangled = {}
-            		      if tangled then
-            		        for _, ref in ipairs(tangled) do
-            		          local new_node = linkedlist.insert_after(tangled_ll, ref, {
-            		            linetype = LineType.TANGLED,
-            		            prefix = ref.data.prefix,
-            		            line = ref.data.prefix .. line,
-            		            untangled = it,
-            		            insert = true,
-            		          })
-            		          table.insert(l.tangled, new_node)
-            		        end
-            		      end
-            		      
-            		    end
-            		    
-            				lnum = lnum + 1
-            			end
-            			f:close()
+            		  origin_path = f:read("*line")
+            		  f:close()
             		end
             		
+                if origin_path then
+                  local f = io.open(origin_path, "r")
+                  if f then
+                    local start_buf = linkedlist.push_back(untangled_ll, {
+                      linetype = LineType.BUF_DELIM,
+                      str = "START " .. origin_path,
+                    })
+                    
+                    local end_buf = linkedlist.push_back(untangled_ll, {
+                      linetype = LineType.BUF_DELIM,
+                      str = "END " .. origin_path,
+                    })
+                    
+                    linkedlist.push_back(parts_ll, {
+                      start_buf = start_buf,
+                      end_buf = end_buf,
+                      name = origin_path,
+                    })
+                    
+                  	local lnum = 1
+                    local insert_after = start_buf
+                  	while true do
+                  		local line = f:read("*line")
+                  		if not line then break end
+                      if string.match(line, "^@[^@]%S*[+-]?=%s*$") then
+                        local _, _, name, op = string.find(line, "^@(%S-)([+-]?=)%s*$")
+                        
+                        local l = { linetype = LineType.SECTION, str = name, op = op }
+                        
+                        insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
+                        
+                        local it = insert_after and insert_after.prev
+                        while it ~= start_buf do
+                          if it.data.linetype == LineType.SECTION and it.data.str == name then
+                            break
+                          end
+                          it = it.prev
+                        end
+                        
+                        local section
+                        if it ~= start_buf then
+                          section = linkedlist.insert_after(sections_ll[name], it.data.section, insert_after)
+                          insert_after.data.section = section
+                        else
+                          sections_ll[name] = sections_ll[name] or {}
+                          section = linkedlist.push_front(sections_ll[name], insert_after)
+                        end
+                        l.section = section
+                        
+                        local ref_it
+                        if op == "+=" then
+                          section = section.next
+                          while section do
+                            local it = section.data
+                            if it.data.op == "+=" then
+                              ref_it = it.data.tangled
+                            end
+                            section = section.next
+                          end
+                        elseif op == "-=" then
+                          section = section.prev
+                          while section do
+                            local it = section.data
+                            if it.data.op == "-=" then
+                              ref_it = it.data.tangled
+                              break
+                            end
+                            section = section.prev
+                          end
+                        end
+                        
+                        if not ref_it then
+                          if op == "+=" then
+                            ref_it = {}
+                            for line in linkedlist.iter(untangled_ll) do
+                              if line.linetype == LineType.REFERENCE and line.str == name then
+                                for _, ref in ipairs(line.tangled) do
+                                  table.insert(ref_it, ref[2])
+                                end
+                              end
+                            end
+                          elseif op == "-=" then
+                            ref_it = {}
+                            for line in linkedlist.iter(untangled_ll) do
+                              if line.linetype == LineType.REFERENCE and line.str == name then
+                                for _, ref in ipairs(line.tangled) do
+                                  table.insert(ref_it, ref[1])
+                                end
+                              end
+                            end
+                          end
+                        end
+                        
+                        l.tangled = {}
+                        if op == "+=" then
+                          for _, ref in ipairs(ref_it) do
+                            local section = linkedlist.insert_before(tangled_ll, ref, {
+                              linetype = LineType.SENTINEL,
+                              prefix = ref.prev.data.prefix,
+                              untangled = insert_after
+                            })
+                            table.insert(l.tangled, section)
+                          end
+                        elseif op == "-=" then
+                          for _, ref in ipairs(ref_it) do
+                            local section = linkedlist.insert_after(tangled_ll, ref, {
+                              linetype = LineType.SENTINEL,
+                              prefix = ref.data.prefix,
+                              untangled = insert_after
+                            })
+                            table.insert(l.tangled, section)
+                          end
+                        end
+                        
+                      
+                        if op == "=" then
+                          local start_file = linkedlist.push_back(tangled_ll, {
+                            linetype = LineType.SENTINEL,
+                            prefix = "",
+                            line = "START " .. name,
+                            untangled = insert_after,
+                          })
+                        
+                          local end_file = linkedlist.push_back(tangled_ll, {
+                            linetype = LineType.SENTINEL,
+                            prefix = "",
+                            line = "END " .. name,
+                            untangled = insert_after,
+                          })
+                        
+                          l.tangled = { start_file }
+                          l.extra_tangled = end_file
+                          root_set[l.str] = insert_after
+                        
+                        end
+                        
+                      
+                        local it = insert_after and insert_after.next
+                        while it ~= end_buf do
+                          local cur_delete = it
+                          if it.data.linetype == LineType.SECTION then
+                            break
+                          elseif cur_delete.data.linetype == LineType.REFERENCE then
+                            for _, ref in ipairs(cur_delete.data.tangled) do
+                              local ref_start, ref_end = unpack(ref)
+                              local copy = ref_start
+                              local quit = false
+                              while copy and not quit do
+                                if copy == ref_end then quit = true end
+                                local to_delete = copy
+                                local untangled = to_delete.data.untangled
+                                if not untangled then
+                                  print("Something went south.")
+                                elseif untangled.data.linetype == LineType.TEXT then
+                                  untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
+                                elseif untangled.data.linetype == LineType.REFERENCE then
+                                  untangled.data.tangled = vim.tbl_filter(function(x) return x[1] ~= to_delete and x[2] ~= to_delete end, untangled.data.tangled)
+                                elseif untangled.data.linetype == LineType.SECTION then
+                                  untangled.data.tangled = vim.tbl_filter(function(x) return x ~= to_delete end, untangled.data.tangled)
+                                end
+                                
+                                -- linkedlist.remove(tangled_ll, to_delete)
+                                to_delete.data.remove = true
+                                
+                                copy = copy.next
+                              end
+                            end
+                          
+                          else
+                            if cur_delete.data.tangled then
+                              for _, ref in ipairs(cur_delete.data.tangled) do
+                                ref.data.remove = true
+                              end
+                            end
+                            
+                          end
+                          
+                          it = it.next
+                        end
+                        
+                        local it = insert_after and insert_after.next
+                        while it ~= end_buf do
+                          local insert_after = it.prev
+                          if it.data.linetype == LineType.SECTION then
+                            break
+                          elseif it.data.linetype == LineType.REFERENCE then
+                            local l = it.data
+                            local name = l.str
+                            local tangled = {}
+                            if insert_after then
+                              if insert_after.data.linetype == LineType.TEXT then
+                                for _, ref in ipairs(insert_after.data.tangled) do
+                                  table.insert(tangled, ref)
+                                end
+                              elseif insert_after.data.linetype == LineType.REFERENCE then
+                                for _, ref in ipairs(insert_after.data.tangled) do
+                                  local start_ref, end_ref = unpack(ref)
+                                  table.insert(tangled, end_ref)
+                                end
+                              elseif insert_after.data.linetype == LineType.SECTION then
+                                for _, ref in ipairs(insert_after.data.tangled) do
+                                  table.insert(tangled, ref)
+                                end
+                              end
+                            end
+                            
+                            l.tangled = {}
+                            for _, ref in ipairs(tangled) do
+                              local ref_start, ref_end = tangleRec(name, sections_ll, tangled_ll, ref, ref.data.prefix .. l.prefix, {})
+                              table.insert(l.tangled, {ref_start, ref_end})
+                              ref_start.data.untangled = it
+                              ref_end.data.untangled = it
+                              ref_end.data.prefix = ref.data.prefix
+                            end
+                            
+                          
+                          else
+                            local l = it.data
+                            local line = l.str
+                            local tangled = {}
+                            if insert_after then
+                              if insert_after.data.linetype == LineType.TEXT then
+                                for _, ref in ipairs(insert_after.data.tangled) do
+                                  table.insert(tangled, ref)
+                                end
+                              elseif insert_after.data.linetype == LineType.REFERENCE then
+                                for _, ref in ipairs(insert_after.data.tangled) do
+                                  local start_ref, end_ref = unpack(ref)
+                                  table.insert(tangled, end_ref)
+                                end
+                              elseif insert_after.data.linetype == LineType.SECTION then
+                                for _, ref in ipairs(insert_after.data.tangled) do
+                                  table.insert(tangled, ref)
+                                end
+                              end
+                            end
+                            
+                            l.tangled = {}
+                            if tangled then
+                              for _, ref in ipairs(tangled) do
+                                local new_node = linkedlist.insert_after(tangled_ll, ref, {
+                                  linetype = LineType.TANGLED,
+                                  prefix = ref.data.prefix,
+                                  line = ref.data.prefix .. line,
+                                  untangled = it,
+                                  insert = true,
+                                })
+                                table.insert(l.tangled, new_node)
+                              end
+                            end
+                            
+                          end
+                          
+                          it = it.next
+                        end
+                        
+                      
+                      elseif string.match(line, "^%s*@[^@]%S*%s*$") then
+                        local _, _, prefix, name = string.find(line, "^(%s*)@(%S+)%s*$")
+                        if name == nil then
+                        	print(line)
+                        end
+                        
+                      	local l = { 
+                      		linetype = LineType.REFERENCE, 
+                      		str = name,
+                      		prefix = prefix
+                      	}
+                      	
+                        local tangled = {}
+                        if insert_after then
+                          if insert_after.data.linetype == LineType.TEXT then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              table.insert(tangled, ref)
+                            end
+                          elseif insert_after.data.linetype == LineType.REFERENCE then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              local start_ref, end_ref = unpack(ref)
+                              table.insert(tangled, end_ref)
+                            end
+                          elseif insert_after.data.linetype == LineType.SECTION then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              table.insert(tangled, ref)
+                            end
+                          end
+                        end
+                        
+                        insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
+                        
+                        local it = insert_after
+                        l.tangled = {}
+                        for _, ref in ipairs(tangled) do
+                          local ref_start, ref_end = tangleRec(name, sections_ll, tangled_ll, ref, ref.data.prefix .. l.prefix, {})
+                          table.insert(l.tangled, {ref_start, ref_end})
+                          ref_start.data.untangled = it
+                          ref_end.data.untangled = it
+                          ref_end.data.prefix = ref.data.prefix
+                        end
+                        
+                      
+                      elseif lnum == 1 and string.match(line, "^##%S+$") then
+                        local name = string.match(line, "^##(%S*)%s*$")
+                        
+                        local l = {
+                          linetype = LineType.ASSEMBLY,
+                          str = name,
+                        }
+                        
+                        insert_after = linkedlist.insert_after(untangled_ll, start_buf, l)
+                        
+                      
+                      else
+                        local l = { 
+                        	linetype = LineType.TEXT, 
+                        	str = line 
+                        }
+                        local tangled = {}
+                        if insert_after then
+                          if insert_after.data.linetype == LineType.TEXT then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              table.insert(tangled, ref)
+                            end
+                          elseif insert_after.data.linetype == LineType.REFERENCE then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              local start_ref, end_ref = unpack(ref)
+                              table.insert(tangled, end_ref)
+                            end
+                          elseif insert_after.data.linetype == LineType.SECTION then
+                            for _, ref in ipairs(insert_after.data.tangled) do
+                              table.insert(tangled, ref)
+                            end
+                          end
+                        end
+                        
+                        insert_after = linkedlist.insert_after(untangled_ll, insert_after, l)
+                        
+                        local it = insert_after
+                        l.tangled = {}
+                        if tangled then
+                          for _, ref in ipairs(tangled) do
+                            local new_node = linkedlist.insert_after(tangled_ll, ref, {
+                              linetype = LineType.TANGLED,
+                              prefix = ref.data.prefix,
+                              line = ref.data.prefix .. line,
+                              untangled = it,
+                              insert = true,
+                            })
+                            table.insert(l.tangled, new_node)
+                          end
+                        end
+                        
+                      end
+                      
+                  		lnum = lnum + 1
+                  	end
+                  	f:close()
+                  end
+                  
+                end
             	end
             end
             

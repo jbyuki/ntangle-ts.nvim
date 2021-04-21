@@ -19,6 +19,7 @@ end
 
 -- @fill_output_buf
 -- @display_tangle_output
+-- @display_untangle_output
 
 @script_variables+=
 local getLinetype

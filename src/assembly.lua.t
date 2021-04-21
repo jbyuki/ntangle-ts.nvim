@@ -116,7 +116,6 @@ root_set = asm_namespaces[name].root_set
 parts_ll = asm_namespaces[name].parts_ll
 buf_asm = name
 
-
 if type(name) ~= "number" and check_links then
   @check_if_there_are_links
   @read_all_links_except_current
@@ -140,14 +139,19 @@ link_name = vim.fn.fnamemodify(link_name, ":p")
 for _, part in ipairs(parts) do
 	if link_name ~= part then
 		@read_link_from_link_file
-		@append_lines_from_part_file
+    if origin_path then
+      @append_lines_from_part_file
+    end
 	end
 end
 
 @read_link_from_link_file+=
 local f = io.open(part, "r")
-local origin_path = f:read("*line")
-f:close()
+local origin_path
+if f then
+  origin_path = f:read("*line")
+  f:close()
+end
 
 @append_lines_from_part_file+=
 local f = io.open(origin_path, "r")
@@ -328,3 +332,4 @@ elseif cur_delete == start_buf.next and cur_delete.data.linetype == LineType.ASS
   @transfer_untangled_to_new_namespace
   @generate_tangled_new_namespace_insert
   cur_delete = start_buf.next
+  delete_this = cur_delete.next

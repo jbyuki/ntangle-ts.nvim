@@ -3280,13 +3280,14 @@ function M.attach()
       
       local lnum = 1
       local lrow = 1
-      local source
       local it = tangled_ll.head
+      
+      local source_len = 0
       
       while it do
         if it.data.linetype == LineType.TANGLED then
           if it.data.remove then
-            local start_byte = (source and string.len(source)) or 0
+            local start_byte = source_len
             local start_col = 0
             local start_row = lrow-1
             local old_row = 1
@@ -3306,7 +3307,7 @@ function M.attach()
             linkedlist.remove(tangled_ll, tmp)
             
           elseif it.data.insert then
-            local start_byte = (source and string.len(source)) or 0
+            local start_byte = source_len
             local start_col = 0
             local start_row = lrow-1
             local old_row = 0
@@ -3320,20 +3321,20 @@ function M.attach()
               start_row, start_col,
               start_row+old_row, old_end_col,
               start_row+new_row, new_end_col)
-            if not source then
-              source = it.data.line
+            if source_len == 0 then
+              source_len = source_len + string.len(it.data.line)
             else
-              source = source .. "\n" .. it.data.line
+              source_len = source_len + string.len(it.data.line) + 1
             end
             
             it.data.insert = nil
             lrow = lrow + 1
             it = it.next
           else
-            if not source then
-              source = it.data.line
+            if source_len == 0 then
+              source_len = source_len + string.len(it.data.line)
             else
-              source = source .. "\n" .. it.data.line
+              source_len = source_len + string.len(it.data.line) + 1
             end
             
             lrow = lrow + 1

@@ -19,31 +19,6 @@ The `else` keyword is not properly highlighted because it's just concatenating t
 
 Everything is properly syntax highlighted.
 
-How?
-====
-
-Parse in different buffer:
-  * can't copy extmarks (ephemeral)
-  * override decoration provider (most promising) **This approach is used**
-    * Probably need incremental tangling for speed 
-
-Parse in same buffer:
-  * not out-of-order parsing in treesitter
-  * It doesn't seem to be possible: [Issue](https://github.com/tree-sitter/tree-sitter/issues/1026)
-
-Blinking issues (solved)
-------------------------
-
-It's almost working except for blinking issues. The reason is that it has the following execution order:
-
-```
-on_bytes -> redraw -> nvim_buf_set_lines (through vim.schedule from on_bytes) -> redraw (through nvim__buf_redraw_range)
-```
-
-Possible solution:
-  * use string instead of separate buffer. **This approach is used**
-  * partially syntax highlight in initial redraw using previous syntax information (still blinking)
-
 Usage
 -----
 
@@ -63,5 +38,5 @@ Improvements
 
 * [x] incremental tangling
 * [x] assemblies
-* [x] on_bytes for tangled
+* [x] on_bytes
 * [ ] multiple roots

@@ -1218,8 +1218,14 @@ function M.attach()
   local local_parser = vim.treesitter.get_parser()
   local_parser._callbacks.changedtree = {}
   local_parser._callbacks.bytes = {}
-  trees[buf] = parser:parse(nil, sources[buf])
+
+  local cur_tree, tree_changes = parser:parse(nil, sources[buf])
+  -- print("initial")
+  -- print(vim.inspect(sources[buf]))
+  -- print(cur_tree:root():sexpr())
+  trees[buf] = cur_tree
   
+
 
   vim.api.nvim_buf_attach(buf, true, {
     on_lines = function(_, _, _, firstline, lastline, new_lastline, _)
@@ -3273,8 +3279,12 @@ function M.attach()
       end
       
       sources[buf] = table.concat(source_lines, "\n")
-
-      trees[buf] = parser:parse(nil, sources[buf])
+      print(trees[buf])
+      local cur_tree, tree_changes = parser:parse(nil, sources[buf])
+      -- print("incremental")
+      -- print(vim.inspect(sources[buf]))
+      -- print(cur_tree:root():sexpr())
+      trees[buf] = cur_tree
       
     end
   })

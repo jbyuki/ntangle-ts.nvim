@@ -24,7 +24,9 @@ function M.attach()
   @fill_backbuf_if_not_done
   @create_parser_for_untangled
   @mutate_highlighter_for_ntangle
-  @parse_everything_again
+
+  @parse_initial
+
 
   vim.api.nvim_buf_attach(buf, true, {
     on_lines = function(_, _, _, firstline, lastline, new_lastline, _)
@@ -32,7 +34,6 @@ function M.attach()
       @update_line_number_untangled
       @fill_lookup_table
       @generate_tangled_code
-
       @parse_everything_again
     end
   })

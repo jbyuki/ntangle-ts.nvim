@@ -53,7 +53,6 @@ function M.attach()
     end
   
     local path = paths[1]
-    vim.schedule(function() print("loading " .. path) end)
   
     -- pcall(function() vim._ts_add_language(path, ext) end)
     vim._ts_add_language(path, ext)

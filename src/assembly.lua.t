@@ -11,6 +11,8 @@ elseif i == 0 and string.match(line, "^##%S+$") then
   @transfer_untangled_to_new_namespace
   @generate_tangled_new_namespace_insert
 
+  @save_new_buffer_variables
+
 @get_assembly_name+=
 local name = string.match(line, "^##(%S*)%s*$")
 
@@ -30,6 +32,13 @@ local buf_asm
 @script_variables+=
 local asm_namespaces = {}
 
+@buffer_variables+=
+local untangled_ll
+local sections_ll
+local tangled_ll
+local root_set
+local parts_ll
+
 @setup_initial_namespace_to_buffer+=
 asm_namespaces[buf] = {
   untangled_ll = {},
@@ -39,11 +48,11 @@ asm_namespaces[buf] = {
   parts_ll = {},
 }
 
-local untangled_ll = asm_namespaces[buf].untangled_ll
-local sections_ll = asm_namespaces[buf].sections_ll
-local tangled_ll = asm_namespaces[buf].tangled_ll
-local root_set = asm_namespaces[buf].root_set
-local parts_ll = asm_namespaces[buf].parts_ll
+untangled_ll = asm_namespaces[buf].untangled_ll
+sections_ll = asm_namespaces[buf].sections_ll
+tangled_ll = asm_namespaces[buf].tangled_ll
+root_set = asm_namespaces[buf].root_set
+parts_ll = asm_namespaces[buf].parts_ll
 
 @create_untangled_start_end_sentinel
 
@@ -333,3 +342,5 @@ elseif cur_delete == start_buf.next and cur_delete.data.linetype == LineType.ASS
   @generate_tangled_new_namespace_insert
   cur_delete = start_buf.next
   delete_this = cur_delete.next
+
+  @save_new_buffer_variables

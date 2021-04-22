@@ -2,21 +2,24 @@
 @implement+=
 function M.attach()
   @get_current_buffer
+  -- @return_if_already_attached
 
 	@get_language_extension
 	@create_parser_for_buffer
 	@create_highlighter_for_buffer
 	@set_filetype_to_original_language
 
-  @return_if_already_attached
-
   local lookup = {}
-  local bufs = {}
-
 
   @buffer_variables
 
-  @init_incremental_tangling
+  if buf_vars[buf] then
+    @restore_buffer_variables
+  else
+    @init_incremental_tangling
+    @save_new_buffer_variables
+  end
+
   @update_line_number_untangled
   @fill_lookup_table
   @generate_tangled_code
@@ -52,3 +55,23 @@ backbuf[buf] = true
 
 @script_variables+=
 local backlookup = {}
+local buf_vars = {}
+local buf_backup = {}
+
+@save_new_buffer_variables+=
+buf_vars[buf] = {
+  buf_asm = buf_asm,
+  start_buf = start_buf,
+  end_buf = end_buf,
+}
+
+@restore_buffer_variables+=
+buf_asm = buf_vars[buf].buf_asm
+start_buf = buf_vars[buf].start_buf
+end_buf = buf_vars[buf].end_buf
+
+untangled_ll = asm_namespaces[buf_asm].untangled_ll
+sections_ll = asm_namespaces[buf_asm].sections_ll
+tangled_ll = asm_namespaces[buf_asm].tangled_ll
+root_set = asm_namespaces[buf_asm].root_set
+parts_ll = asm_namespaces[buf_asm].parts_ll

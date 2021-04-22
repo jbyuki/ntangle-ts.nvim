@@ -9,9 +9,6 @@ while it ~= end_buf do
   it = it.next
 end
 
-@script_variables+=
-local backlookup = {}
-
 @fill_lookup_table+=
 local lookup = {}
 

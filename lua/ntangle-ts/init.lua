@@ -62,17 +62,20 @@ function M.attach()
   
   local start_buf, end_buf
   
+  local bufname = string.lower(vim.api.nvim_buf_get_name(buf))
+  
 
-  if buf_vars[buf] then
-    buf_asm = buf_vars[buf].buf_asm
-    start_buf = buf_vars[buf].start_buf
-    end_buf = buf_vars[buf].end_buf
+  if buf_vars[bufname] then
+    buf_asm = buf_vars[bufname].buf_asm
+    start_buf = buf_vars[bufname].start_buf
+    end_buf = buf_vars[bufname].end_buf
     
     untangled_ll = asm_namespaces[buf_asm].untangled_ll
     sections_ll = asm_namespaces[buf_asm].sections_ll
     tangled_ll = asm_namespaces[buf_asm].tangled_ll
     root_set = asm_namespaces[buf_asm].root_set
     parts_ll = asm_namespaces[buf_asm].parts_ll
+    
   else
     local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
     
@@ -392,6 +395,7 @@ function M.attach()
         
       
       elseif i == 0 and string.match(line, "^##%S+$") then
+      
         local name = string.match(line, "^##(%S*)%s*$")
         
         local fn = vim.api.nvim_buf_get_name(buf)
@@ -551,6 +555,11 @@ function M.attach()
                     name = origin_path,
                   })
                   
+                  buf_vars[string.lower(origin_path)] = {
+                    buf_asm = buf_asm,
+                    start_buf = start_buf,
+                    end_buf = end_buf,
+                  }
                 	local lnum = 1
                   local insert_after = start_buf
                 	while true do
@@ -910,13 +919,13 @@ function M.attach()
           new_start_buf = linkedlist.push_back(untangled_ll, {
             linetype = LineType.BUF_DELIM,
             buf = buf,
-            str = "START " .. buf,
+            str = "START " .. bufname,
           })
           
           new_end_buf = linkedlist.push_back(untangled_ll, {
             linetype = LineType.BUF_DELIM,
             buf = buf,
-            str = "END " .. buf,
+            str = "END " .. bufname,
           })
           
           linkedlist.push_back(parts_ll, {
@@ -1155,12 +1164,13 @@ function M.attach()
         end
         
       
-        buf_vars[buf] = {
+        buf_vars[bufname] = {
           buf_asm = buf_asm,
           start_buf = start_buf,
           end_buf = end_buf,
         }
         
+      
       
       else
         local l = { 
@@ -1210,7 +1220,7 @@ function M.attach()
     -- @display_tangle_output
     -- @display_untangle_output
     
-    buf_vars[buf] = {
+    buf_vars[bufname] = {
       buf_asm = buf_asm,
       start_buf = start_buf,
       end_buf = end_buf,
@@ -1606,6 +1616,11 @@ function M.attach()
                       name = origin_path,
                     })
                     
+                    buf_vars[string.lower(origin_path)] = {
+                      buf_asm = buf_asm,
+                      start_buf = start_buf,
+                      end_buf = end_buf,
+                    }
                   	local lnum = 1
                     local insert_after = start_buf
                   	while true do
@@ -1965,13 +1980,13 @@ function M.attach()
             new_start_buf = linkedlist.push_back(untangled_ll, {
               linetype = LineType.BUF_DELIM,
               buf = buf,
-              str = "START " .. buf,
+              str = "START " .. bufname,
             })
             
             new_end_buf = linkedlist.push_back(untangled_ll, {
               linetype = LineType.BUF_DELIM,
               buf = buf,
-              str = "END " .. buf,
+              str = "END " .. bufname,
             })
             
             linkedlist.push_back(parts_ll, {
@@ -2212,7 +2227,7 @@ function M.attach()
           cur_delete = start_buf.next
           delete_this = cur_delete.next
         
-          buf_vars[buf] = {
+          buf_vars[bufname] = {
             buf_asm = buf_asm,
             start_buf = start_buf,
             end_buf = end_buf,
@@ -2518,6 +2533,7 @@ function M.attach()
           
         
         elseif i == 0 and string.match(line, "^##%S+$") then
+        
           local name = string.match(line, "^##(%S*)%s*$")
           
           local fn = vim.api.nvim_buf_get_name(buf)
@@ -2677,6 +2693,11 @@ function M.attach()
                       name = origin_path,
                     })
                     
+                    buf_vars[string.lower(origin_path)] = {
+                      buf_asm = buf_asm,
+                      start_buf = start_buf,
+                      end_buf = end_buf,
+                    }
                   	local lnum = 1
                     local insert_after = start_buf
                   	while true do
@@ -3036,13 +3057,13 @@ function M.attach()
             new_start_buf = linkedlist.push_back(untangled_ll, {
               linetype = LineType.BUF_DELIM,
               buf = buf,
-              str = "START " .. buf,
+              str = "START " .. bufname,
             })
             
             new_end_buf = linkedlist.push_back(untangled_ll, {
               linetype = LineType.BUF_DELIM,
               buf = buf,
-              str = "END " .. buf,
+              str = "END " .. bufname,
             })
             
             linkedlist.push_back(parts_ll, {
@@ -3281,12 +3302,13 @@ function M.attach()
           end
           
         
-          buf_vars[buf] = {
+          buf_vars[bufname] = {
             buf_asm = buf_asm,
             start_buf = start_buf,
             end_buf = end_buf,
           }
           
+        
         
         else
           local l = { 
@@ -3451,6 +3473,27 @@ function M.print_lookup()
   print("backlookup " .. vim.inspect(backlookup))
 end
 
+function M.print_tangled()
+  for buf, namespace in pairs(asm_namespaces) do
+    print("BUF " .. buf)
+    local tangled_ll = namespace.tangled_ll
+
+    for line in linkedlist.iter(tangled_ll) do
+      print(getLinetype(line.linetype) .. " " .. vim.inspect(line.line))
+    end
+  end
+end
+
+function M.print_untangled()
+  for buf, namespace in pairs(asm_namespaces) do
+    print("BUF " .. buf)
+    local untangled_ll = namespace.untangled_ll
+
+    for line in linkedlist.iter(untangled_ll) do
+      print(getLinetype(line.linetype) .. " " .. vim.inspect(line.str))
+    end
+  end
+end
 function getLinetype(linetype)
   if linetype == LineType.TEXT then return "TEXT"
   elseif linetype == LineType.REFERENCE then return "REFERENCE"

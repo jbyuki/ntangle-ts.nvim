@@ -7,24 +7,16 @@ vim.api.nvim_command("edit test.lua.t")
 vim.api.nvim_buf_set_lines(0, 0, -1, true, {
   "##test",
   "@*=",
-  "@hello",
+  "print(a)",
 })
 
 require"ntangle-ts".attach()
 
 vim.api.nvim_command("edit test2.lua.t")
 
-
-vim.api.nvim_buf_set_lines(0, 0, -1, true, {
-  "##test",
-  "@hello+=",
-  "print(a)",
-})
 require"ntangle-ts".attach()
 
-vim.api.nvim_buf_set_lines(0, 0, -1, true, {})
+require"ntangle-ts".print_untangled()
 
 vim.api.nvim_command("bw!")
-
-vim.api.nvim_command("edit! test.lua.t")
 vim.api.nvim_command("bw!")

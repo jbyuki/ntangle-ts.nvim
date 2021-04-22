@@ -13,7 +13,7 @@ function M.attach()
 
   @buffer_variables
 
-  if buf_vars[buf] then
+  if buf_vars[bufname] then
     @restore_buffer_variables
   else
     @init_incremental_tangling
@@ -58,20 +58,30 @@ local backlookup = {}
 local buf_vars = {}
 local buf_backup = {}
 
+@buffer_variables+=
+local bufname = string.lower(vim.api.nvim_buf_get_name(buf))
+
 @save_new_buffer_variables+=
-buf_vars[buf] = {
+buf_vars[bufname] = {
   buf_asm = buf_asm,
   start_buf = start_buf,
   end_buf = end_buf,
 }
 
 @restore_buffer_variables+=
-buf_asm = buf_vars[buf].buf_asm
-start_buf = buf_vars[buf].start_buf
-end_buf = buf_vars[buf].end_buf
+buf_asm = buf_vars[bufname].buf_asm
+start_buf = buf_vars[bufname].start_buf
+end_buf = buf_vars[bufname].end_buf
 
 untangled_ll = asm_namespaces[buf_asm].untangled_ll
 sections_ll = asm_namespaces[buf_asm].sections_ll
 tangled_ll = asm_namespaces[buf_asm].tangled_ll
 root_set = asm_namespaces[buf_asm].root_set
 parts_ll = asm_namespaces[buf_asm].parts_ll
+
+@save_buf_vars_for_parts+=
+buf_vars[string.lower(origin_path)] = {
+  buf_asm = buf_asm,
+  start_buf = start_buf,
+  end_buf = end_buf,
+}

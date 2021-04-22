@@ -1,6 +1,7 @@
 ##ntangle-ts
 @check_if_inserted_line_is_assembly+=
 elseif i == 0 and string.match(line, "^##%S+$") then
+
   @get_assembly_name
   @construct_assembly_path
   @create_assembly_line
@@ -12,6 +13,7 @@ elseif i == 0 and string.match(line, "^##%S+$") then
   @generate_tangled_new_namespace_insert
 
   @save_new_buffer_variables
+
 
 @get_assembly_name+=
 local name = string.match(line, "^##(%S*)%s*$")
@@ -166,6 +168,7 @@ end
 local f = io.open(origin_path, "r")
 if f then
   @create_start_and_end_sentinel_for_part
+  @save_buf_vars_for_parts
 	local lnum = 1
   local insert_after = start_buf
 	while true do
@@ -235,13 +238,13 @@ end
 new_start_buf = linkedlist.push_back(untangled_ll, {
   linetype = LineType.BUF_DELIM,
   buf = buf,
-  str = "START " .. buf,
+  str = "START " .. bufname,
 })
 
 new_end_buf = linkedlist.push_back(untangled_ll, {
   linetype = LineType.BUF_DELIM,
   buf = buf,
-  str = "END " .. buf,
+  str = "END " .. bufname,
 })
 
 linkedlist.push_back(parts_ll, {

@@ -47,7 +47,7 @@ local state = {
 }
 
 if state.iter == nil then
-  state.iter = highlighter_query:query():iter_captures(root_node, self.bufnr, line, root_end_row + 1)
+  state.iter = highlighter_query:query():iter_captures(root_node, sources[buf], line, root_end_row + 1)
 end
 
 while line >= state.next_row do

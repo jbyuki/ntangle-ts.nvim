@@ -9,6 +9,7 @@ if not vim._ts_has_language(ext) then
   end
 
   local path = paths[1]
+  vim.schedule(function() print("loading " .. path) end)
 
   -- pcall(function() vim._ts_add_language(path, ext) end)
   vim._ts_add_language(path, ext)

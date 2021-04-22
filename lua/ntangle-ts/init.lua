@@ -53,6 +53,7 @@ function M.attach()
     end
   
     local path = paths[1]
+    vim.schedule(function() print("loading " .. path) end)
   
     -- pcall(function() vim._ts_add_language(path, ext) end)
     vim._ts_add_language(path, ext)
@@ -3877,7 +3878,7 @@ function M._on_line(...)
       }
       
       if state.iter == nil then
-        state.iter = highlighter_query:query():iter_captures(root_node, self.bufnr, line, root_end_row + 1)
+        state.iter = highlighter_query:query():iter_captures(root_node, sources[buf], line, root_end_row + 1)
       end
       
       while line >= state.next_row do
@@ -3943,6 +3944,21 @@ function M.override()
     on_line = M._on_line,
     on_win = highlighter._on_win,
   })
+  
+  local lua_match = function(match, _, source, predicate)
+      local node = match[predicate[2]]
+      local regex = predicate[3]
+      local start_row, _, end_row, _ = node:range()
+      if start_row ~= end_row then
+        return false
+      end
+  
+      return string.find(vim.treesitter.get_node_text(node, source), regex)
+  end
+  
+  -- vim-match? and match? don't support string sources
+  vim.treesitter.add_predicate("vim-match?", lua_match, true)
+  vim.treesitter.add_predicate("match?", lua_match, true)
 end
 
 return M

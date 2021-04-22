@@ -1,4 +1,4 @@
--- Generated from assembly.lua.t, attach.lua.t, build_lookup.lua.t, debug.lua.t, incremental.lua.t, init.lua.t, linkedlist.lua.t, on_buf.lua.t, on_bytes.lua.t, on_line.lua.t, on_win.lua.t, override_decoration_provider.lua.t, parse.lua.t, parser.lua.t, treesitter.lua.t using ntangle.nvim
+-- Generated from assembly.lua.t, attach.lua.t, build_lookup.lua.t, debug.lua.t, incremental.lua.t, init.lua.t, linkedlist.lua.t, load_lang.lua.t, on_buf.lua.t, on_bytes.lua.t, on_line.lua.t, on_win.lua.t, override_decoration_provider.lua.t, parse.lua.t, parser.lua.t, treesitter.lua.t using ntangle.nvim
 local asm_namespaces = {}
 
 local backlookup = {}
@@ -41,9 +41,22 @@ function M.attach()
   
   -- @return_if_already_attached
 
-	local bufname = vim.api.nvim_buf_get_name(0)
-	local ext = vim.fn.fnamemodify(bufname, ":e:e:r")
-	
+  local bufname = vim.api.nvim_buf_get_name(0)
+  local ext = vim.fn.fnamemodify(bufname, ":e:e:r")
+  
+  if not vim._ts_has_language(ext) then
+    local fname = 'parser/' .. ext .. '.*'
+    local paths = vim.api.nvim_get_runtime_file(fname, false)
+  
+    if #paths == 0 then
+      error("no parser for '"..ext.."' language, see :help treesitter-parsers")
+    end
+  
+    local path = paths[1]
+  
+    -- pcall(function() vim._ts_add_language(path, ext) end)
+    vim._ts_add_language(path, ext)
+  end
 	local parser = vim.treesitter.get_parser(buf, ext)
 	
 	vim.treesitter.highlighter.new(parser, {})

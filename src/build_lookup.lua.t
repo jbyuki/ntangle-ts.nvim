@@ -12,25 +12,44 @@ end
 @fill_lookup_table+=
 local lookup = {}
 
-local tangle_lnum = 1
-for line in linkedlist.iter(tangled_ll) do
-  if line.linetype == LineType.TANGLED then
-    if line.untangled.data.buf == buf then
-      lookup[line.untangled.data.lnum] = { tangle_lnum, string.len(line.prefix) }
+for name, root in pairs(root_set) do
+  local start_file = root.start_file
+  local end_file = root.end_file
+  local tree = root.tree
+
+  local tangle_lnum = 1
+
+  local it = start_file
+  while it ~= end_file do
+    local line = it.data
+    if line.linetype == LineType.TANGLED then
+      if line.untangled.data.buf == buf then
+        lookup[line.untangled.data.lnum] = { tangle_lnum, string.len(line.prefix), tree, root.sources }
+      end
+      tangle_lnum = tangle_lnum + 1
     end
-    tangle_lnum = tangle_lnum + 1
+
+    it = it.next
   end
 end
 
 backlookup[buf] = lookup
 
 @generate_tangled_code+=
-local source_lines = {}
+for name, root in pairs(root_set) do
+  local start_file = root.start_file
+  local end_file = root.end_file
 
-for line in linkedlist.iter(tangled_ll) do
-  if line.linetype == LineType.TANGLED then
-    table.insert(source_lines, line.line)
+  local source_lines = {}
+
+  local it = start_file
+  while it ~= end_file do
+    local line = it.data
+    if line.linetype == LineType.TANGLED then
+      table.insert(source_lines, line.line)
+    end
+    it = it.next
   end
-end
 
-sources[buf] = table.concat(source_lines, "\n")
+  root.sources = table.concat(source_lines, "\n")
+end

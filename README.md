@@ -43,5 +43,4 @@ Improvements
 * [x] incremental tangling
 * [x] assemblies
 * [x] on_bytes
-* [ ] undefined sections
-* [ ] multiple roots
+* [x] multiple roots

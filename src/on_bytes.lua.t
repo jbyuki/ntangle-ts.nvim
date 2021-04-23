@@ -6,24 +6,33 @@ local it = tangled_ll.head
 
 local source_len = 0
 
-while it do
-  if it.data.linetype == LineType.TANGLED then
-    if it.data.remove then
-      @send_delete_on_byte
-      @delete_it_from_tangled
-    elseif it.data.insert then
-      @send_insert_on_byte
-      @add_line_to_tangled
-      it.data.insert = nil
-      lrow = lrow + 1
-      it = it.next
+for name, root in pairs(root_set) do
+  local parser = root.parser
+  local start_file = root.start_file
+  local end_file = root.end_file
+  local tree = root.tree
+
+  local it = start_file
+
+  while it ~= end_file do
+    if it.data.linetype == LineType.TANGLED then
+      if it.data.remove then
+        @send_delete_on_byte
+        @delete_it_from_tangled
+      elseif it.data.insert then
+        @send_insert_on_byte
+        @add_line_to_tangled
+        it.data.insert = nil
+        lrow = lrow + 1
+        it = it.next
+      else
+        @add_line_to_tangled
+        lrow = lrow + 1
+        it = it.next
+      end
     else
-      @add_line_to_tangled
-      lrow = lrow + 1
-      it = it.next
+        it = it.next
     end
-  else
-      it = it.next
   end
 end
 
@@ -43,10 +52,12 @@ local new_byte = 0
 local old_end_col = 0
 local new_end_col = 0
 
-trees[buf]:edit(start_byte,start_byte+old_byte,start_byte+new_byte,
-  start_row, start_col,
-  start_row+old_row, old_end_col,
-  start_row+new_row, new_end_col)
+if tree then
+  tree:edit(start_byte,start_byte+old_byte,start_byte+new_byte,
+    start_row, start_col,
+    start_row+old_row, old_end_col,
+    start_row+new_row, new_end_col)
+end
 
 @add_line_to_tangled+=
 if source_len == 0 then
@@ -66,7 +77,10 @@ local new_byte = string.len(it.data.line) + 1
 local old_end_col = 0
 local new_end_col = 0
 
-trees[buf]:edit(start_byte,start_byte+old_byte,start_byte+new_byte,
-  start_row, start_col,
-  start_row+old_row, old_end_col,
-  start_row+new_row, new_end_col)
+if tree then
+  tree:edit(start_byte,start_byte+old_byte,start_byte+new_byte,
+    start_row, start_col,
+    start_row+old_row, old_end_col,
+    start_row+new_row, new_end_col)
+end
+

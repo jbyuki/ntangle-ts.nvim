@@ -1,32 +1,28 @@
 ##ntangle-ts
-@create_parser_for_untangled+=
-local ft = vim.api.nvim_buf_get_option(buf, "ft")
-local parser = vim._create_ts_parser(ft)
-@save_buffer_language
-
-@script_variables+=
-local trees = {}
-local sources = {}
-
 @parse_initial+=
-local cur_tree, tree_changes = parser:parse(nil, sources[buf])
--- print("initial")
--- print(vim.inspect(sources[buf]))
--- print(cur_tree:root():sexpr())
-trees[buf] = cur_tree
+for name, root in pairs(root_set) do
+  local cur_tree, tree_changes = root.parser:parse(nil, root.sources)
+  -- print("initial")
+  -- print(vim.inspect(sources[buf]))
+  -- print(cur_tree[1]:root():sexpr())
+  root.tree = cur_tree
+end
 
 @parse_everything_again+=
--- print(trees[buf])
-local cur_tree, tree_changes = parser:parse(trees[buf], sources[buf])
--- print("incremental")
--- print(vim.inspect(sources[buf]))
--- print(cur_tree:root():sexpr())
-trees[buf] = cur_tree
+for name, root in pairs(root_set) do
+  -- print(trees[buf])
+  local cur_tree, tree_changes = root.parser:parse(root.tree,root.sources)
+  -- print("incremental")
+  -- print(vim.inspect(sources[buf]))
+  -- print(cur_tree:root():sexpr())
+  root.tree = cur_tree
+end
 
 @script_variables+=
 local lang = {}
 
 @save_buffer_language+=
+local ft = vim.api.nvim_buf_get_option(buf, "ft")
 lang[buf] = ft
 
 @mutate_highlighter_for_ntangle+=

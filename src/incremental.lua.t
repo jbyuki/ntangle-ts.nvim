@@ -402,7 +402,13 @@ if op == "=" then
 
   l.tangled = { start_file }
   l.extra_tangled = end_file
-  root_set[l.str] = insert_after
+
+  root_set[l.str] = {
+    start_file = start_file,
+    end_file = end_file,
+    parser = vim._create_ts_parser(ext),
+    tree = nil,
+  }
 
 end
 

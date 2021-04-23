@@ -30,9 +30,6 @@ local highlighter = vim.treesitter.highlighter
 
 local ns
 
-local trees = {}
-local sources = {}
-
 local lang = {}
 
 local M = {}
@@ -243,7 +240,13 @@ function M.attach()
         
           l.tangled = { start_file }
           l.extra_tangled = end_file
-          root_set[l.str] = insert_after
+        
+          root_set[l.str] = {
+            start_file = start_file,
+            end_file = end_file,
+            parser = vim._create_ts_parser(ext),
+            tree = nil,
+          }
         
         end
         
@@ -690,7 +693,13 @@ function M.attach()
                       
                         l.tangled = { start_file }
                         l.extra_tangled = end_file
-                        root_set[l.str] = insert_after
+                      
+                        root_set[l.str] = {
+                          start_file = start_file,
+                          end_file = end_file,
+                          parser = vim._create_ts_parser(ext),
+                          tree = nil,
+                        }
                       
                       end
                       
@@ -1103,7 +1112,13 @@ function M.attach()
               
                 l.tangled = { start_file }
                 l.extra_tangled = end_file
-                root_set[l.str] = insert_after
+              
+                root_set[l.str] = {
+                  start_file = start_file,
+                  end_file = end_file,
+                  parser = vim._create_ts_parser(ext),
+                  tree = nil,
+                }
               
               end
               
@@ -1254,48 +1269,67 @@ function M.attach()
     it = it.next
   end
   
-  local lookup = {}
+  for name, root in pairs(root_set) do
+    local start_file = root.start_file
+    local end_file = root.end_file
   
-  local tangle_lnum = 1
-  for line in linkedlist.iter(tangled_ll) do
-    if line.linetype == LineType.TANGLED then
-      if line.untangled.data.buf == buf then
-        lookup[line.untangled.data.lnum] = { tangle_lnum, string.len(line.prefix) }
+    local source_lines = {}
+  
+    local it = start_file
+    while it ~= end_file do
+      local line = it.data
+      if line.linetype == LineType.TANGLED then
+        table.insert(source_lines, line.line)
       end
-      tangle_lnum = tangle_lnum + 1
+      it = it.next
     end
+  
+    root.sources = table.concat(source_lines, "\n")
   end
-  
-  backlookup[buf] = lookup
-  
-  local source_lines = {}
-  
-  for line in linkedlist.iter(tangled_ll) do
-    if line.linetype == LineType.TANGLED then
-      table.insert(source_lines, line.line)
-    end
-  end
-  
-  sources[buf] = table.concat(source_lines, "\n")
 
   backbuf[buf] = true
   
   local ft = vim.api.nvim_buf_get_option(buf, "ft")
-  local parser = vim._create_ts_parser(ft)
   lang[buf] = ft
-  
   
   local local_parser = vim.treesitter.get_parser()
   local_parser._callbacks.changedtree = {}
   local_parser._callbacks.bytes = {}
 
-  local cur_tree, tree_changes = parser:parse(nil, sources[buf])
-  -- print("initial")
-  -- print(vim.inspect(sources[buf]))
-  -- print(cur_tree:root():sexpr())
-  trees[buf] = cur_tree
+  for name, root in pairs(root_set) do
+    local cur_tree, tree_changes = root.parser:parse(nil, root.sources)
+    -- print("initial")
+    -- print(vim.inspect(sources[buf]))
+    -- print(cur_tree[1]:root():sexpr())
+    root.tree = cur_tree
+  end
   
 
+  local lookup = {}
+  
+  for name, root in pairs(root_set) do
+    local start_file = root.start_file
+    local end_file = root.end_file
+    local tree = root.tree
+  
+    local tangle_lnum = 1
+  
+    local it = start_file
+    while it ~= end_file do
+      local line = it.data
+      if line.linetype == LineType.TANGLED then
+        if line.untangled.data.buf == buf then
+          lookup[line.untangled.data.lnum] = { tangle_lnum, string.len(line.prefix), tree, root.sources }
+        end
+        tangle_lnum = tangle_lnum + 1
+      end
+  
+      it = it.next
+    end
+  end
+  
+  backlookup[buf] = lookup
+  
 
   vim.api.nvim_buf_attach(buf, true, {
     on_lines = function(_, _, _, firstline, lastline, new_lastline, _)
@@ -1751,7 +1785,13 @@ function M.attach()
                         
                           l.tangled = { start_file }
                           l.extra_tangled = end_file
-                          root_set[l.str] = insert_after
+                        
+                          root_set[l.str] = {
+                            start_file = start_file,
+                            end_file = end_file,
+                            parser = vim._create_ts_parser(ext),
+                            tree = nil,
+                          }
                         
                         end
                         
@@ -2164,7 +2204,13 @@ function M.attach()
                 
                   l.tangled = { start_file }
                   l.extra_tangled = end_file
-                  root_set[l.str] = insert_after
+                
+                  root_set[l.str] = {
+                    start_file = start_file,
+                    end_file = end_file,
+                    parser = vim._create_ts_parser(ext),
+                    tree = nil,
+                  }
                 
                 end
                 
@@ -2381,7 +2427,13 @@ function M.attach()
           
             l.tangled = { start_file }
             l.extra_tangled = end_file
-            root_set[l.str] = insert_after
+          
+            root_set[l.str] = {
+              start_file = start_file,
+              end_file = end_file,
+              parser = vim._create_ts_parser(ext),
+              tree = nil,
+            }
           
           end
           
@@ -2828,7 +2880,13 @@ function M.attach()
                         
                           l.tangled = { start_file }
                           l.extra_tangled = end_file
-                          root_set[l.str] = insert_after
+                        
+                          root_set[l.str] = {
+                            start_file = start_file,
+                            end_file = end_file,
+                            parser = vim._create_ts_parser(ext),
+                            tree = nil,
+                          }
                         
                         end
                         
@@ -3241,7 +3299,13 @@ function M.attach()
                 
                   l.tangled = { start_file }
                   l.extra_tangled = end_file
-                  root_set[l.str] = insert_after
+                
+                  root_set[l.str] = {
+                    start_file = start_file,
+                    end_file = end_file,
+                    parser = vim._create_ts_parser(ext),
+                    tree = nil,
+                  }
                 
                 end
                 
@@ -3378,64 +3442,78 @@ function M.attach()
       
       local source_len = 0
       
-      while it do
-        if it.data.linetype == LineType.TANGLED then
-          if it.data.remove then
-            local start_byte = source_len
-            local start_col = 0
-            local start_row = lrow-1
-            local old_row = 1
-            local new_row = 0
-            local old_byte = string.len(it.data.line) + 1
-            local new_byte = 0
-            local old_end_col = 0
-            local new_end_col = 0
-            
-            trees[buf]:edit(start_byte,start_byte+old_byte,start_byte+new_byte,
-              start_row, start_col,
-              start_row+old_row, old_end_col,
-              start_row+new_row, new_end_col)
-            
-            local tmp = it
-            it = it.next
-            linkedlist.remove(tangled_ll, tmp)
-            
-          elseif it.data.insert then
-            local start_byte = source_len
-            local start_col = 0
-            local start_row = lrow-1
-            local old_row = 0
-            local new_row = 1
-            local old_byte = 0
-            local new_byte = string.len(it.data.line) + 1
-            local old_end_col = 0
-            local new_end_col = 0
-            
-            trees[buf]:edit(start_byte,start_byte+old_byte,start_byte+new_byte,
-              start_row, start_col,
-              start_row+old_row, old_end_col,
-              start_row+new_row, new_end_col)
-            if source_len == 0 then
-              source_len = source_len + string.len(it.data.line)
+      for name, root in pairs(root_set) do
+        local parser = root.parser
+        local start_file = root.start_file
+        local end_file = root.end_file
+        local tree = root.tree
+      
+        local it = start_file
+      
+        while it ~= end_file do
+          if it.data.linetype == LineType.TANGLED then
+            if it.data.remove then
+              local start_byte = source_len
+              local start_col = 0
+              local start_row = lrow-1
+              local old_row = 1
+              local new_row = 0
+              local old_byte = string.len(it.data.line) + 1
+              local new_byte = 0
+              local old_end_col = 0
+              local new_end_col = 0
+              
+              if tree then
+                tree:edit(start_byte,start_byte+old_byte,start_byte+new_byte,
+                  start_row, start_col,
+                  start_row+old_row, old_end_col,
+                  start_row+new_row, new_end_col)
+              end
+              
+              local tmp = it
+              it = it.next
+              linkedlist.remove(tangled_ll, tmp)
+              
+            elseif it.data.insert then
+              local start_byte = source_len
+              local start_col = 0
+              local start_row = lrow-1
+              local old_row = 0
+              local new_row = 1
+              local old_byte = 0
+              local new_byte = string.len(it.data.line) + 1
+              local old_end_col = 0
+              local new_end_col = 0
+              
+              if tree then
+                tree:edit(start_byte,start_byte+old_byte,start_byte+new_byte,
+                  start_row, start_col,
+                  start_row+old_row, old_end_col,
+                  start_row+new_row, new_end_col)
+              end
+              
+              if source_len == 0 then
+                source_len = source_len + string.len(it.data.line)
+              else
+                source_len = source_len + string.len(it.data.line) + 1
+              end
+              
+              it.data.insert = nil
+              lrow = lrow + 1
+              it = it.next
             else
-              source_len = source_len + string.len(it.data.line) + 1
+              if source_len == 0 then
+                source_len = source_len + string.len(it.data.line)
+              else
+                source_len = source_len + string.len(it.data.line) + 1
+              end
+              
+              lrow = lrow + 1
+              it = it.next
             end
-            
-            it.data.insert = nil
-            lrow = lrow + 1
-            it = it.next
           else
-            if source_len == 0 then
-              source_len = source_len + string.len(it.data.line)
-            else
-              source_len = source_len + string.len(it.data.line) + 1
-            end
-            
-            lrow = lrow + 1
-            it = it.next
+              it = it.next
           end
-        else
-            it = it.next
         end
       end
       
@@ -3452,35 +3530,56 @@ function M.attach()
         it = it.next
       end
       
+      for name, root in pairs(root_set) do
+        local start_file = root.start_file
+        local end_file = root.end_file
+      
+        local source_lines = {}
+      
+        local it = start_file
+        while it ~= end_file do
+          local line = it.data
+          if line.linetype == LineType.TANGLED then
+            table.insert(source_lines, line.line)
+          end
+          it = it.next
+        end
+      
+        root.sources = table.concat(source_lines, "\n")
+      end
+      for name, root in pairs(root_set) do
+        -- print(trees[buf])
+        local cur_tree, tree_changes = root.parser:parse(root.tree,root.sources)
+        -- print("incremental")
+        -- print(vim.inspect(sources[buf]))
+        -- print(cur_tree:root():sexpr())
+        root.tree = cur_tree
+      end
+      
       local lookup = {}
       
-      local tangle_lnum = 1
-      for line in linkedlist.iter(tangled_ll) do
-        if line.linetype == LineType.TANGLED then
-          if line.untangled.data.buf == buf then
-            lookup[line.untangled.data.lnum] = { tangle_lnum, string.len(line.prefix) }
+      for name, root in pairs(root_set) do
+        local start_file = root.start_file
+        local end_file = root.end_file
+        local tree = root.tree
+      
+        local tangle_lnum = 1
+      
+        local it = start_file
+        while it ~= end_file do
+          local line = it.data
+          if line.linetype == LineType.TANGLED then
+            if line.untangled.data.buf == buf then
+              lookup[line.untangled.data.lnum] = { tangle_lnum, string.len(line.prefix), tree, root.sources }
+            end
+            tangle_lnum = tangle_lnum + 1
           end
-          tangle_lnum = tangle_lnum + 1
+      
+          it = it.next
         end
       end
       
       backlookup[buf] = lookup
-      
-      local source_lines = {}
-      
-      for line in linkedlist.iter(tangled_ll) do
-        if line.linetype == LineType.TANGLED then
-          table.insert(source_lines, line.line)
-        end
-      end
-      
-      sources[buf] = table.concat(source_lines, "\n")
-      -- print(trees[buf])
-      local cur_tree, tree_changes = parser:parse(trees[buf], sources[buf])
-      -- print("incremental")
-      -- print(vim.inspect(sources[buf]))
-      -- print(cur_tree:root():sexpr())
-      trees[buf] = cur_tree
       
     end
   })
@@ -3861,10 +3960,9 @@ function M._on_line(...)
     
     if lookup[line+1] then
       local tline = line
-      local line, indent = unpack(lookup[line+1])
+      local line, indent, tstree, sources = unpack(lookup[line+1])
       line = line - 1
       local self = vim.treesitter.highlighter.active[buf]
-      local tstree = trees[buf]
       if not tstree then return end
       
       local root_node = tstree:root()
@@ -3881,7 +3979,7 @@ function M._on_line(...)
       }
       
       if state.iter == nil then
-        state.iter = highlighter_query:query():iter_captures(root_node, sources[buf], line, root_end_row + 1)
+        state.iter = highlighter_query:query():iter_captures(root_node, sources, line, root_end_row + 1)
       end
       
       while line >= state.next_row do

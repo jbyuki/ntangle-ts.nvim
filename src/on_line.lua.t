@@ -15,7 +15,7 @@ if backbuf[buf] then
   @convert_line_number_to_untangled
   if lookup[line+1] then
     local tline = line
-    local line, indent = unpack(lookup[line+1])
+    local line, indent, tstree, sources = unpack(lookup[line+1])
     line = line - 1
     @get_current_highlighter
     @highlight_from_backbuf
@@ -30,7 +30,6 @@ else
 end
 
 @highlight_from_backbuf+=
-local tstree = trees[buf]
 if not tstree then return end
 
 local root_node = tstree:root()
@@ -47,7 +46,7 @@ local state = {
 }
 
 if state.iter == nil then
-  state.iter = highlighter_query:query():iter_captures(root_node, sources[buf], line, root_end_row + 1)
+  state.iter = highlighter_query:query():iter_captures(root_node, sources, line, root_end_row + 1)
 end
 
 while line >= state.next_row do

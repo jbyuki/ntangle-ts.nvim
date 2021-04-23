@@ -44,9 +44,6 @@ list.head = node
 @return_new_element+=
 return node
 
-@o+=
-local a
-
 @implement+=
 function linkedlist.insert_after(list, it, el)
 	@create_new_element

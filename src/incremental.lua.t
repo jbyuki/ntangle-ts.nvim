@@ -249,18 +249,6 @@ end
 @if_tangled_text_add_to_thombstone+=
 to_delete.data.remove = true
 
-@remove_all_thombstones+=
-local it = tangled_ll.head
-while it do
-  if it.data.linetype == LineType.TANGLED and it.data.remove then
-    local tmp = it
-    it = it.next
-    linkedlist.remove(tangled_ll, tmp)
-  else
-    it = it.next
-  end
-end
-
 @remove_section_from_sections+=
 if sections_ll[cur_delete.data.str] then
   local it = sections_ll[cur_delete.data.str].head

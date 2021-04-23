@@ -10,6 +10,8 @@ function M.attach()
 	@create_highlighter_for_buffer
 	@set_filetype_to_original_language
 
+  @enable_conceal_reference_names
+
   local lookup = {}
 
   @buffer_variables

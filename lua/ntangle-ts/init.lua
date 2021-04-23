@@ -1,4 +1,4 @@
--- Generated from assembly.lua.t, attach.lua.t, build_lookup.lua.t, debug.lua.t, incremental.lua.t, init.lua.t, linkedlist.lua.t, load_lang.lua.t, on_buf.lua.t, on_bytes.lua.t, on_line.lua.t, on_win.lua.t, override_decoration_provider.lua.t, parse.lua.t, parser.lua.t, treesitter.lua.t using ntangle.nvim
+-- Generated from assembly.lua.t, attach.lua.t, build_lookup.lua.t, conceal.lua.t, debug.lua.t, incremental.lua.t, init.lua.t, linkedlist.lua.t, load_lang.lua.t, on_buf.lua.t, on_bytes.lua.t, on_line.lua.t, on_win.lua.t, override_decoration_provider.lua.t, parse.lua.t, parser.lua.t, treesitter.lua.t using ntangle.nvim
 local asm_namespaces = {}
 
 local backlookup = {}
@@ -62,6 +62,8 @@ function M.attach()
 	vim.treesitter.highlighter.new(parser, {})
 	
 	vim.api.nvim_command("set ft=" .. ext)
+
+  vim.fn.matchadd("Conceal", [[\(^\s*@.*\)\@<=_]], 10, -1, { conceal = ' '})
 
   local lookup = {}
 

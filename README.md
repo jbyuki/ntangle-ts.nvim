@@ -31,6 +31,10 @@ augroup ntanglets
 	autocmd!
 	autocmd BufRead *.t lua require"ntangle-ts".attach()
 augroup END
+
+" For proper conceal support
+set conceallevel=2
+set concealcursor=nc
 ```
 
 Improvements

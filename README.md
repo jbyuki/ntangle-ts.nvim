@@ -22,7 +22,7 @@ Everything is properly syntax highlighted.
 Usage
 -----
 
-Status: **unstable**
+Status: **Everything is implemented but there might be still instabilities**
 
 ```vim
 lua require"ntangle-ts".override()

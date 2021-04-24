@@ -1,3 +1,0 @@
-##test
-@print+=
-print(a)

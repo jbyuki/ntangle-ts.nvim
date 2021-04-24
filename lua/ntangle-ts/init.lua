@@ -1,4 +1,4 @@
--- Generated from assembly.lua.t, attach.lua.t, build_lookup.lua.t, conceal.lua.t, debug.lua.t, incremental.lua.t, init.lua.t, linkedlist.lua.t, load_lang.lua.t, on_buf.lua.t, on_bytes.lua.t, on_line.lua.t, on_win.lua.t, override_decoration_provider.lua.t, parse.lua.t, parser.lua.t, treesitter.lua.t using ntangle.nvim
+-- Generated from assembly.lua.t, attach.lua.t, build_lookup.lua.t, conceal.lua.t, debug.lua.t, incremental.lua.t, init.lua.t, linkedlist.lua.t, load_lang.lua.t, on_bytes.lua.t, on_line.lua.t, override_decoration_provider.lua.t, parser.lua.t, treesitter.lua.t using ntangle.nvim
 local asm_namespaces = {}
 
 local backlookup = {}
@@ -20,6 +20,7 @@ local LineType = {
 	REFERENCE = 1,
 	TEXT = 2,
 	SECTION = 3,
+	
 }
 
 local linkedlist = {}
@@ -3943,8 +3944,6 @@ function linkedlist.has_iter(list, it)
   end
   return false
 end
-function M._on_buf(...)
-end
 function M._on_line(...)
   local _, _, buf, line = unpack({...})
   if backbuf[buf] then
@@ -4017,15 +4016,6 @@ function M._on_line(...)
     highlighter._on_line(...)
   end
   
-end
-
-function M._on_win(...)
-  local _, _, buf, _ = unpack({...})
-  if backbuf[buf] then
-    return true
-  else
-    highlighter._on_win(...)
-  end
 end
 
 function M.override()

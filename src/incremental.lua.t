@@ -106,7 +106,6 @@ elseif l.op == "-=" then
 
 @else_operator_equal_clear_and_put_after_start_node+=
 else
-  @clear_nodes_between_start_and_end_node
   local after_this = start_node
   @create_sentinel_for_section
   @insert_lines_after_this

@@ -37,7 +37,6 @@ local M = {}
 function M.attach()
   local buf = vim.api.nvim_get_current_buf()
   
-  -- @return_if_already_attached
 
   local bufname = vim.api.nvim_buf_get_name(0)
   local ext = vim.fn.fnamemodify(bufname, ":e:e:r")

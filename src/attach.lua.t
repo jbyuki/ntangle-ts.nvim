@@ -2,7 +2,6 @@
 @implement+=
 function M.attach()
   @get_current_buffer
-  -- @return_if_already_attached
 
   @get_language_extension
   @require_language
@@ -47,11 +46,6 @@ end
 
 @get_current_buffer+=
 local buf = vim.api.nvim_get_current_buf()
-
-@return_if_already_attached+=
-if backbuf[buf] then
-  return
-end
 
 @fill_backbuf_if_not_done+=
 backbuf[buf] = true

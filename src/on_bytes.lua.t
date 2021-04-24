@@ -1,11 +1,5 @@
 ##ntangle-ts
 @send_on_bytes+=
-local lnum = 1
-local lrow = 1
-local it = tangled_ll.head
-
-local source_len = 0
-
 for name, root in pairs(root_set) do
   local parser = root.parser
   local start_file = root.start_file
@@ -13,6 +7,8 @@ for name, root in pairs(root_set) do
   local tree = root.tree
 
   local it = start_file
+  local lrow = 1
+  local source_len = 0
 
   while it ~= end_file do
     if it.data.linetype == LineType.TANGLED then

@@ -3436,12 +3436,6 @@ function M.attach()
       end
       
       
-      local lnum = 1
-      local lrow = 1
-      local it = tangled_ll.head
-      
-      local source_len = 0
-      
       for name, root in pairs(root_set) do
         local parser = root.parser
         local start_file = root.start_file
@@ -3449,6 +3443,8 @@ function M.attach()
         local tree = root.tree
       
         local it = start_file
+        local lrow = 1
+        local source_len = 0
       
         while it ~= end_file do
           if it.data.linetype == LineType.TANGLED then
@@ -3548,11 +3544,7 @@ function M.attach()
         root.sources = table.concat(source_lines, "\n")
       end
       for name, root in pairs(root_set) do
-        -- print(trees[buf])
         local cur_tree, tree_changes = root.parser:parse(root.tree,root.sources)
-        -- print("incremental")
-        -- print(vim.inspect(sources[buf]))
-        -- print(cur_tree:root():sexpr())
         root.tree = cur_tree
       end
       

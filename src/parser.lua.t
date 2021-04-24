@@ -10,11 +10,7 @@ end
 
 @parse_everything_again+=
 for name, root in pairs(root_set) do
-  -- print(trees[buf])
   local cur_tree, tree_changes = root.parser:parse(root.tree,root.sources)
-  -- print("incremental")
-  -- print(vim.inspect(sources[buf]))
-  -- print(cur_tree:root():sexpr())
   root.tree = cur_tree
 end
 

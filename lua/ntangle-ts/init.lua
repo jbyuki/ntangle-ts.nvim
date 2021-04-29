@@ -1,4 +1,4 @@
--- Generated from assembly.lua.t, attach.lua.t, build_lookup.lua.t, conceal.lua.t, debug.lua.t, incremental.lua.t, init.lua.t, linkedlist.lua.t, load_lang.lua.t, on_bytes.lua.t, on_line.lua.t, override_decoration_provider.lua.t, parser.lua.t, treesitter.lua.t using ntangle.nvim
+-- Generated using ntangle.nvim
 local asm_namespaces = {}
 
 local backlookup = {}
@@ -23,8 +23,6 @@ local LineType = {
 	
 }
 
-local linkedlist = {}
-
 local backbuf = {}
 
 local highlighter = vim.treesitter.highlighter
@@ -32,6 +30,8 @@ local highlighter = vim.treesitter.highlighter
 local ns
 
 local lang = {}
+
+local linkedlist = {}
 
 local M = {}
 function M.attach()
@@ -76,6 +76,8 @@ function M.attach()
   
   local start_buf, end_buf
   
+  local bufs_set
+  
   local bufname = string.lower(vim.api.nvim_buf_get_name(buf))
   
 
@@ -90,6 +92,11 @@ function M.attach()
     root_set = asm_namespaces[buf_asm].root_set
     parts_ll = asm_namespaces[buf_asm].parts_ll
     
+    bufs_set = asm_namespaces[buf_asm].bufs_set
+    
+    
+    bufs_set[buf] = { start_buf, end_buf }
+    
   else
     local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
     
@@ -100,6 +107,8 @@ function M.attach()
       sections_ll = {},
       root_set = {},
       parts_ll = {},
+      bufs_set = {},
+      
     }
     
     untangled_ll = asm_namespaces[buf].untangled_ll
@@ -107,6 +116,9 @@ function M.attach()
     tangled_ll = asm_namespaces[buf].tangled_ll
     root_set = asm_namespaces[buf].root_set
     parts_ll = asm_namespaces[buf].parts_ll
+    
+    bufs_set = asm_namespaces[buf].bufs_set
+    
     
     start_buf = linkedlist.push_back(untangled_ll, {
       linetype = LineType.BUF_DELIM,
@@ -126,6 +138,8 @@ function M.attach()
       name = vim.api.nvim_buf_get_name(buf),
     })
     
+    
+    bufs_set[buf] = { start_buf, end_buf }
     
     
     local linecount = vim.api.nvim_buf_line_count(buf)
@@ -530,6 +544,8 @@ function M.attach()
             sections_ll = {},
             root_set = {},
             parts_ll = {},
+            bufs_set = {},
+            
           }
           
           check_links = true
@@ -540,6 +556,8 @@ function M.attach()
         tangled_ll = asm_namespaces[name].tangled_ll
         root_set = asm_namespaces[name].root_set
         parts_ll = asm_namespaces[name].parts_ll
+        bufs_set = asm_namespaces[name].bufs_set
+        
         buf_asm = name
         
         if type(name) ~= "number" and check_links then
@@ -999,6 +1017,8 @@ function M.attach()
         start_buf = new_start_buf
         end_buf = new_end_buf
         
+        bufs_set[buf] = { start_buf, end_buf }
+        
         insert_after = start_buf.next
         
         do
@@ -1260,13 +1280,16 @@ function M.attach()
     
   end
 
-  local lnum = 1
-  local it = start_buf.next
-  while it ~= end_buf do
-    it.data.lnum = lnum
-    it.data.buf = buf
-    lnum = lnum + 1
-    it = it.next
+  for buf, sent in pairs(bufs_set) do
+    local start_buf, end_buf = unpack(sent)
+    local lnum = 1
+    local it = start_buf.next
+    while it ~= end_buf do
+      it.data.lnum = lnum
+      it.data.buf = buf
+      lnum = lnum + 1
+      it = it.next
+    end
   end
   
   for name, root in pairs(root_set) do
@@ -1305,7 +1328,7 @@ function M.attach()
   end
   
 
-  local lookup = {}
+  local lookups = {}
   
   for name, root in pairs(root_set) do
     local start_file = root.start_file
@@ -1318,7 +1341,10 @@ function M.attach()
     while it ~= end_file do
       local line = it.data
       if line.linetype == LineType.TANGLED then
-        if line.untangled.data.buf == buf then
+        local lookup_buf = line.untangled.data.buf
+        if lookup_buf then
+          lookups[lookup_buf] = lookups[lookup_buf] or {}
+          local lookup = lookups[lookup_buf]
           lookup[line.untangled.data.lnum] = { tangle_lnum, string.len(line.prefix), tree, root.sources }
         end
         tangle_lnum = tangle_lnum + 1
@@ -1328,7 +1354,10 @@ function M.attach()
     end
   end
   
-  backlookup[buf] = lookup
+  
+  for buf, lookup in pairs(lookups) do
+    backlookup[buf] = lookup
+  end
   
 
   vim.api.nvim_buf_attach(buf, true, {
@@ -1622,6 +1651,8 @@ function M.attach()
               sections_ll = {},
               root_set = {},
               parts_ll = {},
+              bufs_set = {},
+              
             }
             
             check_links = true
@@ -1632,6 +1663,8 @@ function M.attach()
           tangled_ll = asm_namespaces[name].tangled_ll
           root_set = asm_namespaces[name].root_set
           parts_ll = asm_namespaces[name].parts_ll
+          bufs_set = asm_namespaces[name].bufs_set
+          
           buf_asm = name
           
           if type(name) ~= "number" and check_links then
@@ -2091,6 +2124,8 @@ function M.attach()
           start_buf = new_start_buf
           end_buf = new_end_buf
           
+          bufs_set[buf] = { start_buf, end_buf }
+          
           insert_after = start_buf.next
           
           do
@@ -2296,6 +2331,7 @@ function M.attach()
             end_buf = end_buf,
           }
           
+        
         else
           if cur_delete.data.tangled then
             for _, ref in ipairs(cur_delete.data.tangled) do
@@ -2717,6 +2753,8 @@ function M.attach()
               sections_ll = {},
               root_set = {},
               parts_ll = {},
+              bufs_set = {},
+              
             }
             
             check_links = true
@@ -2727,6 +2765,8 @@ function M.attach()
           tangled_ll = asm_namespaces[name].tangled_ll
           root_set = asm_namespaces[name].root_set
           parts_ll = asm_namespaces[name].parts_ll
+          bufs_set = asm_namespaces[name].bufs_set
+          
           buf_asm = name
           
           if type(name) ~= "number" and check_links then
@@ -3186,6 +3226,8 @@ function M.attach()
           start_buf = new_start_buf
           end_buf = new_end_buf
           
+          bufs_set[buf] = { start_buf, end_buf }
+          
           insert_after = start_buf.next
           
           do
@@ -3517,13 +3559,16 @@ function M.attach()
       -- @display_tangle_output
       -- @display_untangle_output
       
-      local lnum = 1
-      local it = start_buf.next
-      while it ~= end_buf do
-        it.data.lnum = lnum
-        it.data.buf = buf
-        lnum = lnum + 1
-        it = it.next
+      for buf, sent in pairs(bufs_set) do
+        local start_buf, end_buf = unpack(sent)
+        local lnum = 1
+        local it = start_buf.next
+        while it ~= end_buf do
+          it.data.lnum = lnum
+          it.data.buf = buf
+          lnum = lnum + 1
+          it = it.next
+        end
       end
       
       for name, root in pairs(root_set) do
@@ -3548,7 +3593,7 @@ function M.attach()
         root.tree = cur_tree
       end
       
-      local lookup = {}
+      local lookups = {}
       
       for name, root in pairs(root_set) do
         local start_file = root.start_file
@@ -3561,7 +3606,10 @@ function M.attach()
         while it ~= end_file do
           local line = it.data
           if line.linetype == LineType.TANGLED then
-            if line.untangled.data.buf == buf then
+            local lookup_buf = line.untangled.data.buf
+            if lookup_buf then
+              lookups[lookup_buf] = lookups[lookup_buf] or {}
+              local lookup = lookups[lookup_buf]
               lookup[line.untangled.data.lnum] = { tangle_lnum, string.len(line.prefix), tree, root.sources }
             end
             tangle_lnum = tangle_lnum + 1
@@ -3571,7 +3619,10 @@ function M.attach()
         end
       end
       
-      backlookup[buf] = lookup
+      
+      for buf, lookup in pairs(lookups) do
+        backlookup[buf] = lookup
+      end
       
     end
   })
@@ -3786,6 +3837,106 @@ function tangleRec(name, sections_ll, tangled_ll, tangled_it, prefix, stack)
   return start_node, end_node
 end
 
+function M._on_line(...)
+  local _, _, buf, line = unpack({...})
+  if backbuf[buf] then
+    local lookup = backlookup[buf]
+    
+    if lookup[line+1] then
+      local tline = line
+      local line, indent, tstree, sources = unpack(lookup[line+1])
+      line = line - 1
+      local self = vim.treesitter.highlighter.active[buf]
+      if not tstree then return end
+      
+      local root_node = tstree:root()
+      local root_start_row, _, root_end_row, _ = root_node:range()
+      
+      -- Only worry about trees within the line range
+      if root_start_row > line or root_end_row < line then return end
+      
+      local highlighter_query = self:get_query(lang[buf])
+      
+      local state = {
+        next_row = 0,
+        iter = nil
+      }
+      
+      if state.iter == nil then
+        state.iter = highlighter_query:query():iter_captures(root_node, sources, line, root_end_row + 1)
+      end
+      
+      while line >= state.next_row do
+        local capture, node = state.iter()
+      
+        if capture == nil then break end
+      
+        local start_row, start_col, end_row, end_col = node:range()
+        local hl = highlighter_query.hl_cache[capture]
+      
+        start_col = start_col - indent
+        end_col = end_col - indent
+        
+      
+        if hl and start_row == line and end_row == line then
+          vim.api.nvim_buf_set_extmark(buf, ns, tline, start_col,
+                                 { end_line = tline, end_col = end_col,
+                                   hl_group = hl,
+                                   ephemeral = true,
+                                   priority = 100 -- Low but leaves room below
+                                  })
+        end
+        if start_row > line then
+          state.next_row = start_row
+        end
+      end
+      
+      -- @highlight_line_test
+    else
+      local curline = vim.api.nvim_buf_get_lines(buf, line, line+1, true)[1]
+      
+      vim.api.nvim_buf_set_extmark(buf, ns, line, 0, { 
+          end_col = string.len(curline),
+          hl_group = "String",
+          ephemeral = true,
+          priority = 100 -- Low but leaves room below
+      })
+      
+    end
+  
+  -- @test_override
+  else
+    highlighter._on_line(...)
+  end
+  
+end
+
+function M.override()
+  local nss = vim.api.nvim_get_namespaces()
+  ns = nss["treesitter/highlighter"]
+  
+  vim.api.nvim_set_decoration_provider(ns, {
+    on_buf = highlighter._on_buf,
+    on_line = M._on_line,
+    on_win = highlighter._on_win,
+  })
+  
+  local lua_match = function(match, _, source, predicate)
+      local node = match[predicate[2]]
+      local regex = predicate[3]
+      local start_row, _, end_row, _ = node:range()
+      if start_row ~= end_row then
+        return false
+      end
+  
+      return string.find(vim.treesitter.get_node_text(node, source), regex)
+  end
+  
+  -- vim-match? and match? don't support string sources
+  vim.treesitter.add_predicate("vim-match?", lua_match, true)
+  vim.treesitter.add_predicate("match?", lua_match, true)
+end
+
 function linkedlist.push_back(list, el)
 	local node = { data = el }
 	
@@ -3943,104 +4094,4 @@ function linkedlist.has_iter(list, it)
   end
   return false
 end
-function M._on_line(...)
-  local _, _, buf, line = unpack({...})
-  if backbuf[buf] then
-    local lookup = backlookup[buf]
-    
-    if lookup[line+1] then
-      local tline = line
-      local line, indent, tstree, sources = unpack(lookup[line+1])
-      line = line - 1
-      local self = vim.treesitter.highlighter.active[buf]
-      if not tstree then return end
-      
-      local root_node = tstree:root()
-      local root_start_row, _, root_end_row, _ = root_node:range()
-      
-      -- Only worry about trees within the line range
-      if root_start_row > line or root_end_row < line then return end
-      
-      local highlighter_query = self:get_query(lang[buf])
-      
-      local state = {
-        next_row = 0,
-        iter = nil
-      }
-      
-      if state.iter == nil then
-        state.iter = highlighter_query:query():iter_captures(root_node, sources, line, root_end_row + 1)
-      end
-      
-      while line >= state.next_row do
-        local capture, node = state.iter()
-      
-        if capture == nil then break end
-      
-        local start_row, start_col, end_row, end_col = node:range()
-        local hl = highlighter_query.hl_cache[capture]
-      
-        start_col = start_col - indent
-        end_col = end_col - indent
-        
-      
-        if hl and start_row == line and end_row == line then
-          vim.api.nvim_buf_set_extmark(buf, ns, tline, start_col,
-                                 { end_line = tline, end_col = end_col,
-                                   hl_group = hl,
-                                   ephemeral = true,
-                                   priority = 100 -- Low but leaves room below
-                                  })
-        end
-        if start_row > line then
-          state.next_row = start_row
-        end
-      end
-      
-      -- @highlight_line_test
-    else
-      local curline = vim.api.nvim_buf_get_lines(buf, line, line+1, true)[1]
-      
-      vim.api.nvim_buf_set_extmark(buf, ns, line, 0, { 
-          end_col = string.len(curline),
-          hl_group = "String",
-          ephemeral = true,
-          priority = 100 -- Low but leaves room below
-      })
-      
-    end
-  
-  -- @test_override
-  else
-    highlighter._on_line(...)
-  end
-  
-end
-
-function M.override()
-  local nss = vim.api.nvim_get_namespaces()
-  ns = nss["treesitter/highlighter"]
-  
-  vim.api.nvim_set_decoration_provider(ns, {
-    on_buf = highlighter._on_buf,
-    on_line = M._on_line,
-    on_win = highlighter._on_win,
-  })
-  
-  local lua_match = function(match, _, source, predicate)
-      local node = match[predicate[2]]
-      local regex = predicate[3]
-      local start_row, _, end_row, _ = node:range()
-      if start_row ~= end_row then
-        return false
-      end
-  
-      return string.find(vim.treesitter.get_node_text(node, source), regex)
-  end
-  
-  -- vim-match? and match? don't support string sources
-  vim.treesitter.add_predicate("vim-match?", lua_match, true)
-  vim.treesitter.add_predicate("match?", lua_match, true)
-end
-
 return M

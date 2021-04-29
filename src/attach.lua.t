@@ -76,6 +76,10 @@ tangled_ll = asm_namespaces[buf_asm].tangled_ll
 root_set = asm_namespaces[buf_asm].root_set
 parts_ll = asm_namespaces[buf_asm].parts_ll
 
+@init_bufs_set_buf_asm
+
+@add_buf_sentinels_to_bufs_set
+
 @save_buf_vars_for_parts+=
 buf_vars[string.lower(origin_path)] = {
   buf_asm = buf_asm,

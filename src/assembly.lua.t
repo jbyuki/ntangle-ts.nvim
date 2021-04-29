@@ -48,6 +48,7 @@ asm_namespaces[buf] = {
   sections_ll = {},
   root_set = {},
   parts_ll = {},
+  @setup_bufs_set
 }
 
 untangled_ll = asm_namespaces[buf].untangled_ll
@@ -56,7 +57,11 @@ tangled_ll = asm_namespaces[buf].tangled_ll
 root_set = asm_namespaces[buf].root_set
 parts_ll = asm_namespaces[buf].parts_ll
 
+@init_bufs_set
+
 @create_untangled_start_end_sentinel
+
+@add_buf_sentinels_to_bufs_set
 
 @if_has_namespace_delete_tangled+=
 if buf_asm then
@@ -125,6 +130,7 @@ sections_ll = asm_namespaces[name].sections_ll
 tangled_ll = asm_namespaces[name].tangled_ll
 root_set = asm_namespaces[name].root_set
 parts_ll = asm_namespaces[name].parts_ll
+@init_bufs_set_name
 buf_asm = name
 
 if type(name) ~= "number" and check_links then
@@ -139,6 +145,7 @@ asm_namespaces[name] = {
   sections_ll = {},
   root_set = {},
   parts_ll = {},
+  @setup_bufs_set
 }
 
 @check_if_there_are_links+=
@@ -291,6 +298,8 @@ old_untangled_ll = nil
 start_buf = new_start_buf
 end_buf = new_end_buf
 
+@add_buf_sentinels_to_bufs_set
+
 insert_after = start_buf.next
 
 @generate_tangled_new_namespace_insert+=
@@ -347,3 +356,21 @@ elseif cur_delete == start_buf.next and cur_delete.data.linetype == LineType.ASS
   delete_this = cur_delete.next
 
   @save_new_buffer_variables
+
+@buffer_variables+=
+local bufs_set
+
+@setup_bufs_set+=
+bufs_set = {},
+
+@init_bufs_set+=
+bufs_set = asm_namespaces[buf].bufs_set
+
+@init_bufs_set_name+=
+bufs_set = asm_namespaces[name].bufs_set
+
+@init_bufs_set_buf_asm+=
+bufs_set = asm_namespaces[buf_asm].bufs_set
+
+@add_buf_sentinels_to_bufs_set+=
+bufs_set[buf] = { start_buf, end_buf }

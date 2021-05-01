@@ -1329,6 +1329,7 @@ function M.attach()
   
 
   local lookups = {}
+  lookups[buf] = {}
   
   for name, root in pairs(root_set) do
     local start_file = root.start_file
@@ -3594,6 +3595,7 @@ function M.attach()
       end
       
       local lookups = {}
+      lookups[buf] = {}
       
       for name, root in pairs(root_set) do
         local start_file = root.start_file

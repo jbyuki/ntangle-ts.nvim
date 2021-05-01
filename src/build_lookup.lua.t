@@ -14,6 +14,7 @@ end
 
 @fill_lookup_table+=
 local lookups = {}
+lookups[buf] = {}
 
 for name, root in pairs(root_set) do
   local start_file = root.start_file

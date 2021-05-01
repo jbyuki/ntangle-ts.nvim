@@ -13,7 +13,7 @@ local backbuf = {}
 @if_has_attach_override+=
 if backbuf[buf] then
   @convert_line_number_to_untangled
-  if lookup[line+1] then
+  if lookup and lookup[line+1] then
     local tline = line
     local line, indent, tstree, sources = unpack(lookup[line+1])
     line = line - 1

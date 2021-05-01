@@ -3842,7 +3842,7 @@ function M._on_line(...)
   if backbuf[buf] then
     local lookup = backlookup[buf]
     
-    if lookup[line+1] then
+    if lookup and lookup[line+1] then
       local tline = line
       local line, indent, tstree, sources = unpack(lookup[line+1])
       line = line - 1

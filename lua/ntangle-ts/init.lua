@@ -5,6 +5,8 @@ local backlookup = {}
 local buf_vars = {}
 local buf_backup = {}
 
+local overriden = false
+
 local getLinetype
 
 local tangleRec
@@ -35,6 +37,12 @@ local linkedlist = {}
 
 local M = {}
 function M.attach()
+  if not overriden then
+    M.override()
+    overriden = true
+  end
+  
+
   local buf = vim.api.nvim_get_current_buf()
   
 
@@ -63,6 +71,9 @@ function M.attach()
   vim.fn.matchadd("Conceal", [[\(^\s*@.*\)\@<=_]], 10, -1, { conceal = ' '})
   -- vim.fn.matchadd("Conceal", [[^\s*\zs@\ze.*\([^=]\)]], 10, -1, { conceal = ''})
   -- vim.fn.matchadd("Conceal", [[^\s*\zs@\ze.*=]], 10, -1, { conceal = ''})
+  vim.api.nvim_command([[setlocal conceallevel=2]])
+  vim.api.nvim_command([[setlocal concealcursor=nc]])
+  -- @enable_foldexpr_for_ntangle
 
   local lookup = {}
 
@@ -598,6 +609,7 @@ function M.attach()
                     start_buf = start_buf,
                     end_buf = end_buf,
                   }
+                  
                 	local lnum = 1
                   local insert_after = start_buf
                 	while true do
@@ -1706,6 +1718,7 @@ function M.attach()
                       start_buf = start_buf,
                       end_buf = end_buf,
                     }
+                    
                   	local lnum = 1
                     local insert_after = start_buf
                   	while true do
@@ -2808,6 +2821,7 @@ function M.attach()
                       start_buf = start_buf,
                       end_buf = end_buf,
                     }
+                    
                   	local lnum = 1
                     local insert_after = start_buf
                   	while true do

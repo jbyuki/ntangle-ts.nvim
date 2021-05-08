@@ -24,18 +24,10 @@ Usage
 
 Status: Everything is implemented but there might be still instabilities
 
-```vim
-lua require"ntangle-ts".override()
+It should work out of the box. Open a `*.t` and it should syntax
+highlight it properly. Please make sure the corresponding treesitter
+parser is installed (see info using `:TSInstallInfo`).
 
-augroup ntanglets
-	autocmd!
-	autocmd BufRead *.t lua require"ntangle-ts".attach()
-augroup END
-
-" For proper conceal support
-set conceallevel=2
-set concealcursor=nc
-```
 
 Improvements
 ------------

@@ -1,6 +1,8 @@
 ##ntangle-ts
 @implement+=
 function M.attach()
+  @override_if_not_done
+
   @get_current_buffer
 
   @get_language_extension
@@ -10,6 +12,7 @@ function M.attach()
 	@set_filetype_to_original_language
 
   @enable_conceal_reference_names
+  -- @enable_foldexpr_for_ntangle
 
   local lookup = {}
 
@@ -86,3 +89,18 @@ buf_vars[string.lower(origin_path)] = {
   start_buf = start_buf,
   end_buf = end_buf,
 }
+
+@script_variables+=
+local overriden = false
+
+@override_if_not_done+=
+if not overriden then
+  M.override()
+  overriden = true
+end
+
+@enable_foldexpr_for_ntangle+=
+vim.api.nvim_command [[setlocal foldmethod=expr]]
+vim.api.nvim_command [[setlocal foldexpr=ntangle_ts#foldexpr()]]
+vim.api.nvim_command [[setlocal fillchars=fold:\ ]]
+vim.api.nvim_command [[setlocal foldtext=ntangle_ts#foldtext()]]

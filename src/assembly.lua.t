@@ -181,7 +181,7 @@ if f then
 	while true do
 		local line = f:read("*line")
 		if not line then break end
-    insert_after = insert_line(line, insert_after)
+    start_buf, end_buf, insert_after = insert_line(nil, line, start_buf, end_buf, insert_after)
 		lnum = lnum + 1
 	end
 	f:close()

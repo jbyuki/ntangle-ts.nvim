@@ -11,7 +11,7 @@ local linecount = vim.api.nvim_buf_line_count(buf)
 local insert_after = start_buf
 for i=0,linecount-1 do
   local line = vim.api.nvim_buf_get_lines(buf, i, i+1, true)[1]
-  insert_after = insert_line(line, insert_after)
+  start_buf, end_buf, insert_after = insert_line(i, line, start_buf, end_buf, insert_after)
 end
 
 @script_variables+=
@@ -265,7 +265,7 @@ end
 @add_lines_incremental+=
 for i=firstline,new_lastline-1 do
   local line = vim.api.nvim_buf_get_lines(buf, i, i+1, true)[1]
-  insert_after = insert_line(line, insert_after)
+  start_buf, end_buf, insert_after = insert_line(i, line, start_buf, end_buf, insert_after)
 end
 
 @check_if_inserted_line_is_section+=

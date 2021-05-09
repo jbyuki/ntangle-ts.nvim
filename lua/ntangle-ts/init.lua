@@ -91,7 +91,8 @@ function M.attach()
   
   local bufname = string.lower(vim.api.nvim_buf_get_name(buf))
   
-  local insert_line = function(line, insert_after)
+  local insert_line
+  insert_line = function(i, line, start_buf, end_buf, insert_after)
     if string.match(line, "^@[^@]%S*[+-]?=%s*$") then
       local _, _, name, op = string.find(line, "^@(%S-)([+-]?=)%s*$")
       
@@ -550,7 +551,7 @@ function M.attach()
               	while true do
               		local line = f:read("*line")
               		if not line then break end
-                  insert_after = insert_line(line, insert_after)
+                  start_buf, end_buf, insert_after = insert_line(nil, line, start_buf, end_buf, insert_after)
               		lnum = lnum + 1
               	end
               	f:close()
@@ -880,7 +881,7 @@ function M.attach()
     end
     
   
-    return insert_after
+    return start_buf, end_buf, insert_after
   end
 
   if buf_vars[bufname] then
@@ -948,7 +949,7 @@ function M.attach()
     local insert_after = start_buf
     for i=0,linecount-1 do
       local line = vim.api.nvim_buf_get_lines(buf, i, i+1, true)[1]
-      insert_after = insert_line(line, insert_after)
+      start_buf, end_buf, insert_after = insert_line(i, line, start_buf, end_buf, insert_after)
     end
     
     buf_vars[bufname] = {
@@ -1391,7 +1392,7 @@ function M.attach()
                   	while true do
                   		local line = f:read("*line")
                   		if not line then break end
-                      insert_after = insert_line(line, insert_after)
+                      start_buf, end_buf, insert_after = insert_line(nil, line, start_buf, end_buf, insert_after)
                   		lnum = lnum + 1
                   	end
                   	f:close()
@@ -1702,7 +1703,7 @@ function M.attach()
       
       for i=firstline,new_lastline-1 do
         local line = vim.api.nvim_buf_get_lines(buf, i, i+1, true)[1]
-        insert_after = insert_line(line, insert_after)
+        start_buf, end_buf, insert_after = insert_line(i, line, start_buf, end_buf, insert_after)
       end
       
       

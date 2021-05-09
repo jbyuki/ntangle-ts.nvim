@@ -11,15 +11,8 @@ local linecount = vim.api.nvim_buf_line_count(buf)
 local insert_after = start_buf
 for i=0,linecount-1 do
   local line = vim.api.nvim_buf_get_lines(buf, i, i+1, true)[1]
-  @check_if_inserted_line_is_section
-  @check_if_inserted_line_is_reference
-  @check_if_inserted_line_is_assembly
-  @otherwise_inserted_line_is_text
+  insert_after = insert_line(line, insert_after)
 end
-
--- @fill_output_buf
--- @display_tangle_output
--- @display_untangle_output
 
 @script_variables+=
 local getLinetype
@@ -272,10 +265,7 @@ end
 @add_lines_incremental+=
 for i=firstline,new_lastline-1 do
   local line = vim.api.nvim_buf_get_lines(buf, i, i+1, true)[1]
-  @check_if_inserted_line_is_section
-  @check_if_inserted_line_is_reference
-  @check_if_inserted_line_is_assembly
-  @otherwise_inserted_line_is_text
+  insert_after = insert_line(line, insert_after)
 end
 
 @check_if_inserted_line_is_section+=
@@ -517,32 +507,6 @@ if tangled then
     })
     table.insert(l.tangled, new_node)
   end
-end
-
-@fill_output_buf+=
-if outputbuf then
-  vim.schedule(function()
-    local lines = {}
-    for line in linkedlist.iter(tangled_ll) do
-      if line.linetype == LineType.TANGLED then
-        table.insert(lines, line.line)
-      end
-    end
-    vim.api.nvim_buf_set_lines(outputbuf, 0, -1, true, lines)
-  end)
-else
-  print("UNTANGLED")
-  for line in linkedlist.iter(untangled_ll) do
-    print(getLinetype(line.linetype) .. " " .. vim.inspect(line.line))
-  end
-  print("TANGLED")
-  for line in linkedlist.iter(tangled_ll) do
-    print(getLinetype(line.linetype) .. " " .. vim.inspect(line.line) .. " " .. vim.inspect(line.prefix))
-  end
-  -- print("ROOTS")
-  -- for name,_ in pairs(root_set) do
-    -- print(name)
-  -- end
 end
 
 @push_name_onto_stack+=

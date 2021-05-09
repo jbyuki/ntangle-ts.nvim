@@ -17,6 +17,7 @@ function M.attach()
   local lookup = {}
 
   @buffer_variables
+  @insert_line_function
 
   if buf_vars[bufname] then
     @restore_buffer_variables

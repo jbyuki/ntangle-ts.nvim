@@ -181,10 +181,7 @@ if f then
 	while true do
 		local line = f:read("*line")
 		if not line then break end
-    @check_if_inserted_line_is_section
-    @check_if_inserted_line_is_reference
-    @if_assembly_only_add_it_to_untangled
-    @otherwise_inserted_line_is_text
+    insert_after = insert_line(line, insert_after)
 		lnum = lnum + 1
 	end
 	f:close()

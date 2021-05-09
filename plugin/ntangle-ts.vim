@@ -6,7 +6,7 @@ endif
 
 let g:loaded_ntangle_ts = 1
 
-" augroup ntanglets
-	" autocmd!
-	" autocmd BufRead *.t lua require"ntangle-ts".attach()
-" augroup END
+augroup ntanglets
+	autocmd!
+	autocmd BufRead *.t lua require"ntangle-ts".attach()
+augroup END

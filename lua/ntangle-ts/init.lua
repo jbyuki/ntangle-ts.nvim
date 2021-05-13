@@ -1042,7 +1042,14 @@ function M.attach()
   
 
   vim.api.nvim_buf_attach(buf, true, {
-    on_lines = function(_, _, _, firstline, lastline, new_lastline, _)
+    on_bytes = function(_, _, _, start_row, _, _, end_row, _, _, new_end_row, _, _)
+      local firstline = start_row+1
+      local lastline = end_row+1
+      local new_lastline = new_end_row+1
+
+      vim.schedule(function() 
+        print("firstline " .. firstline .. " lastline " .. lastline .. " new_lastline " .. new_lastline)
+      end)
       local delete_this = start_buf.next
       for _=1,firstline do
         delete_this = delete_this.next

@@ -38,7 +38,12 @@ function M.attach()
   @fill_lookup_table
 
   vim.api.nvim_buf_attach(buf, true, {
-    on_lines = function(_, _, _, firstline, lastline, new_lastline, _)
+    on_bytes = function(_, _, _, start_row, _, _, end_row, _, _, new_end_row, _, _)
+      local firstline = start_row+1
+      local lastline = end_row+1
+      local new_lastline = new_end_row+1
+
+      @print_messages
       @call_ntangle_incremental
       @update_line_number_untangled
       @generate_tangled_code
@@ -105,3 +110,8 @@ vim.api.nvim_command [[setlocal foldmethod=expr]]
 vim.api.nvim_command [[setlocal foldexpr=ntangle_ts#foldexpr()]]
 vim.api.nvim_command [[setlocal fillchars=fold:\ ]]
 vim.api.nvim_command [[setlocal foldtext=ntangle_ts#foldtext()]]
+
+@print_messages+=
+vim.schedule(function() 
+  print("firstline " .. firstline .. " lastline " .. lastline .. " new_lastline " .. new_lastline)
+end)

@@ -40,8 +40,8 @@ function M.attach()
   vim.api.nvim_buf_attach(buf, true, {
     on_bytes = function(_, _, _, start_row, _, _, end_row, _, _, new_end_row, _, _)
       local firstline = start_row+1
-      local lastline = end_row+1
-      local new_lastline = new_end_row+1
+      local lastline = start_row+end_row+1
+      local new_lastline = start_row+new_end_row+1
 
       @print_messages
       @call_ntangle_incremental

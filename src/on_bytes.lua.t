@@ -80,3 +80,15 @@ if tree then
     start_row+new_row, new_end_col)
 end
 
+@reset_all_insert+=
+for name, root in pairs(root_set) do
+  local start_file = root.start_file
+  local end_file = root.end_file
+
+  local it = start_file
+
+  while it ~= end_file do
+    it.data.insert = nil
+    it = it.next
+  end
+end

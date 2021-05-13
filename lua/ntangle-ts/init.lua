@@ -843,6 +843,7 @@ function M.attach()
       	linetype = LineType.TEXT, 
       	str = line 
       }
+      
       local tangled = {}
       if insert_after then
         if insert_after.data.linetype == LineType.TEXT then
@@ -952,6 +953,18 @@ function M.attach()
       start_buf, end_buf, insert_after = insert_line(i, line, start_buf, end_buf, insert_after)
     end
     
+    for name, root in pairs(root_set) do
+      local start_file = root.start_file
+      local end_file = root.end_file
+    
+      local it = start_file
+    
+      while it ~= end_file do
+        it.data.insert = nil
+        it = it.next
+      end
+    end
+    
     buf_vars[bufname] = {
       buf_asm = buf_asm,
       start_buf = start_buf,
@@ -1042,23 +1055,20 @@ function M.attach()
   
 
   vim.api.nvim_buf_attach(buf, true, {
-    on_bytes = function(_, _, _, start_row, _, _, end_row, _, _, new_end_row, _, _)
-      local firstline = start_row+1
-      local lastline = start_row+end_row+1
-      local new_lastline = start_row+new_end_row+1
+    on_bytes = function(_, _, _, start_row, start_col, _, end_row, end_col, _, new_end_row, new_end_col, _)
+      local firstline = start_row
+      local lastline = start_row + end_row + 1
+      local new_lastline = start_row + new_end_row + 1
 
-      vim.schedule(function() 
-        print("firstline " .. firstline .. " lastline " .. lastline .. " new_lastline " .. new_lastline)
-      end)
       local delete_this = start_buf.next
-      for _=1,firstline do
+      for _=1,lastline-1 do
         delete_this = delete_this.next
       end
       
       for _=firstline,lastline-1 do
         local cur_delete = delete_this
-        if not cur_delete then break end
-        delete_this = delete_this.next
+        if not cur_delete or cur_delete == end_buf then break end
+        delete_this = delete_this.prev
       
         if cur_delete.data.linetype == LineType.SECTION then
           local insert_after = cur_delete
@@ -1709,8 +1719,10 @@ function M.attach()
       end
       
       for i=firstline,new_lastline-1 do
-        local line = vim.api.nvim_buf_get_lines(buf, i, i+1, true)[1]
-        start_buf, end_buf, insert_after = insert_line(i, line, start_buf, end_buf, insert_after)
+        local line = vim.api.nvim_buf_get_lines(buf, i, i+1, false)
+        if #line > 0 then
+          start_buf, end_buf, insert_after = insert_line(i, line[1], start_buf, end_buf, insert_after)
+        end
       end
       
       
@@ -1861,7 +1873,7 @@ function M.attach()
         backlookup[buf] = lookup
       end
       
-    end
+    end,
   })
 end
 

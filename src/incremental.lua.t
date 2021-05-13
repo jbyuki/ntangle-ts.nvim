@@ -14,6 +14,8 @@ for i=0,linecount-1 do
   start_buf, end_buf, insert_after = insert_line(i, line, start_buf, end_buf, insert_after)
 end
 
+@reset_all_insert
+
 @script_variables+=
 local getLinetype
 
@@ -153,15 +155,15 @@ after_this = linkedlist.insert_after(tangled_ll, after_this, l)
 
 @search_untangled_node_delete+=
 local delete_this = start_buf.next
-for _=1,firstline do
+for _=1,lastline-1 do
   delete_this = delete_this.next
 end
 
 @delete_lines_incremental+=
 for _=firstline,lastline-1 do
   local cur_delete = delete_this
-  if not cur_delete then break end
-  delete_this = delete_this.next
+  if not cur_delete or cur_delete == end_buf then break end
+  delete_this = delete_this.prev
 
   @check_if_deleted_line_is_section
   @check_if_deleted_line_is_reference
@@ -264,8 +266,10 @@ end
 
 @add_lines_incremental+=
 for i=firstline,new_lastline-1 do
-  local line = vim.api.nvim_buf_get_lines(buf, i, i+1, true)[1]
-  start_buf, end_buf, insert_after = insert_line(i, line, start_buf, end_buf, insert_after)
+  local line = vim.api.nvim_buf_get_lines(buf, i, i+1, false)
+  if #line > 0 then
+    start_buf, end_buf, insert_after = insert_line(i, line[1], start_buf, end_buf, insert_after)
+  end
 end
 
 @check_if_inserted_line_is_section+=
@@ -551,3 +555,4 @@ local l = {
 	linetype = LineType.TEXT, 
 	str = line 
 }
+

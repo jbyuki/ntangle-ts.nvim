@@ -13,7 +13,9 @@ for name, root in pairs(root_set) do
   while it ~= end_file do
     if it.data.linetype == LineType.TANGLED then
       if it.data.remove then
-        @send_delete_on_byte
+        if not it.data.insert then
+          @send_delete_on_byte
+        end
         @delete_it_from_tangled
       elseif it.data.insert then
         @send_insert_on_byte

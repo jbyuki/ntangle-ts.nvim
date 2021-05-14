@@ -1739,23 +1739,25 @@ function M.attach()
         while it ~= end_file do
           if it.data.linetype == LineType.TANGLED then
             if it.data.remove then
-              local start_byte = source_len
-              local start_col = 0
-              local start_row = lrow-1
-              local old_row = 1
-              local new_row = 0
-              local old_byte = string.len(it.data.line) + 1
-              local new_byte = 0
-              local old_end_col = 0
-              local new_end_col = 0
-              
-              if tree then
-                tree:edit(start_byte,start_byte+old_byte,start_byte+new_byte,
-                  start_row, start_col,
-                  start_row+old_row, old_end_col,
-                  start_row+new_row, new_end_col)
+              if not it.data.insert then
+                local start_byte = source_len
+                local start_col = 0
+                local start_row = lrow-1
+                local old_row = 1
+                local new_row = 0
+                local old_byte = string.len(it.data.line) + 1
+                local new_byte = 0
+                local old_end_col = 0
+                local new_end_col = 0
+                
+                if tree then
+                  tree:edit(start_byte,start_byte+old_byte,start_byte+new_byte,
+                    start_row, start_col,
+                    start_row+old_row, old_end_col,
+                    start_row+new_row, new_end_col)
+                end
+                
               end
-              
               local tmp = it
               it = it.next
               linkedlist.remove(tangled_ll, tmp)

@@ -38,7 +38,8 @@ function M.attach()
   @fill_lookup_table
 
   vim.api.nvim_buf_attach(buf, true, {
-    on_bytes = function(_, _, _, start_row, start_col, _, end_row, end_col, _, new_end_row, new_end_col, _)
+    on_bytes = function(...)
+      local _, _, _, start_row, start_col, _, end_row, end_col, _, new_end_row, new_end_col, _ = unpack({...})
       @correct_byte_range
 
       @call_ntangle_incremental
@@ -109,6 +110,24 @@ vim.api.nvim_command [[setlocal fillchars=fold:\ ]]
 vim.api.nvim_command [[setlocal foldtext=ntangle_ts#foldtext()]]
 
 @correct_byte_range+=
+-- text ranges = nightmare!
 local firstline = start_row
-local lastline = start_row + end_row + 1
-local new_lastline = start_row + new_end_row + 1
+local lastline
+local new_lastline
+if end_row == new_end_row then
+  lastline = start_row+end_row+1
+  new_lastline = start_row+new_end_row+1
+else
+  if end_col > 0 or start_col > 0 then
+    lastline = start_row+end_row+1
+  else
+    lastline = start_row+end_row
+  end
+  if new_end_col > 0  or start_col > 0 then
+    new_lastline = start_row+new_end_row+1
+  else
+    new_lastline = start_row+new_end_row
+  end
+end
+
+-- print(vim.inspect({...}) .. " " .. firstline .. "," .. lastline .. "," .. new_lastline)

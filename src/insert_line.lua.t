@@ -1,4 +1,4 @@
-##../ntangle-ts
+##ntangle-ts
 @insert_line_function+=
 local insert_line
 insert_line = function(i, line, start_buf, end_buf, insert_after)

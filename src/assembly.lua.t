@@ -252,8 +252,8 @@ new_end_buf = linkedlist.push_back(untangled_ll, {
 })
 
 linkedlist.push_back(parts_ll, {
-  start_buf = start_buf,
-  end_buf = end_buf,
+  start_buf = new_start_buf,
+  end_buf = new_end_buf,
   name = vim.api.nvim_buf_get_name(buf),
 })
 

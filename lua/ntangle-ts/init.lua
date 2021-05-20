@@ -2107,6 +2107,60 @@ function tangleRec(name, sections_ll, tangled_ll, tangled_it, prefix, stack)
   return start_node, end_node
 end
 
+function M.go_down()
+  local bufname = string.lower(vim.api.nvim_buf_get_name(buf))
+  
+  local buf_asm = buf_vars[bufname].buf_asm
+  local start_buf = buf_vars[bufname].start_buf
+  local end_buf = buf_vars[bufname].end_buf
+  
+  local parts_ll = asm_namespaces[buf_asm].parts_ll
+  
+  local lnum, _ = unpack(vim.api.nvim_win_get_cursor(0))
+  
+  local search = start_buf
+  for _=1,lnum do
+    search = search.next
+  end
+  
+  if search.data.linetype ~= LineType.REFERENCE then
+    print("No reference under cursor.")
+    return
+  end
+  
+  local reference_name = search.data.str
+  
+  local references = {}
+  for part in linkedlist.iter(parts_ll) do
+    local start_part = part.start_buf
+    local end_part = part.end_buf
+    local it = start_part.next
+    local part_lnum = 1
+    while it and it ~= end_part do
+      if it.data.linetype == LineType.SECTION and it.data.str == reference_name then
+        table.insert(references, {
+          filename = part.name,
+          lnum = part_lnum,
+        })
+        
+      end
+      part_lnum = part_lnum + 1
+      it = it.next
+    end
+  end
+  
+  vim.fn.setqflist(references)
+  
+  if #references == 0 then
+    print("No reference found.")
+  else
+    if references[1].filename ~= buf then
+      vim.api.nvim_command("e " .. references[1].filename)
+    end
+    vim.api.nvim_win_set_cursor(0, {references[1].lnum, 0})
+  end
+end
+
 function M.go_up()
   local bufname = string.lower(vim.api.nvim_buf_get_name(buf))
   

@@ -121,5 +121,5 @@ if linetype == LineType.REFERENCE then
 elseif linetype == LineType.ASSEMBLY then
   hl_group = "TSString"
 else
-  hl_group = "TSAnnotation"
+  hl_group = "TSString"
 end

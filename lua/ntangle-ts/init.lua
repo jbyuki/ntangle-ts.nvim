@@ -2296,7 +2296,7 @@ function M._on_line(...)
       elseif linetype == LineType.ASSEMBLY then
         hl_group = "TSString"
       else
-        hl_group = "TSAnnotation"
+        hl_group = "TSString"
       end
       
       vim.api.nvim_buf_set_extmark(buf, ns, line, 0, { 

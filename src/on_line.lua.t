@@ -82,9 +82,13 @@ end_col = end_col - indent
 @highlight_ntangle_lines+=
 local curline = vim.api.nvim_buf_get_lines(buf, line, line+1, true)[1]
 
+local linetype
+@verify_if_section_or_reference
+@decide_hl_group_with_linetype
+
 vim.api.nvim_buf_set_extmark(buf, ns, line, 0, { 
     end_col = string.len(curline),
-    hl_group = "String",
+    hl_group = hl_group,
     ephemeral = true,
     priority = 100 -- Low but leaves room below
 })
@@ -100,3 +104,22 @@ vim.api.nvim_buf_set_extmark(buf, ns, line, 0, {
 
 @get_current_highlighter+=
 local self = vim.treesitter.highlighter.active[buf]
+
+@verify_if_section_or_reference+=
+if string.match(curline, "^@[^@]%S*[+-]?=%s*$") then
+  linetype = LineType.SECTION
+elseif string.match(curline, "^%s*@[^@]%S*%s*$") then
+  linetype = LineType.REFERENCE
+elseif string.match(curline, "^##%S+$") then
+  linetype = LineType.ASSEMBLY
+end
+
+@decide_hl_group_with_linetype+=
+local hl_group
+if linetype == LineType.REFERENCE then
+  hl_group = "TSString"
+elseif linetype == LineType.ASSEMBLY then
+  hl_group = "TSString"
+else
+  hl_group = "TSAnnotation"
+end

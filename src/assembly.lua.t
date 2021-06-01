@@ -24,7 +24,7 @@ fn = vim.fn.fnamemodify(fn, ":p")
 local parendir = vim.fn.fnamemodify(fn, ":p:h")
 local assembly_parendir = vim.fn.fnamemodify(name, ":h")
 local assembly_tail = vim.fn.fnamemodify(name, ":t")
-local part_tail = vim.fn.fnamemodify(fn, ":t")
+@build_part_tail
 local link_name = parendir .. "/" .. assembly_parendir .. "/tangle/" .. assembly_tail .. "." .. part_tail
 local path = vim.fn.fnamemodify(link_name, ":h")
 
@@ -371,3 +371,22 @@ bufs_set = asm_namespaces[buf_asm].bufs_set
 
 @add_buf_sentinels_to_bufs_set+=
 bufs_set[buf] = { start_buf, end_buf }
+
+@build_part_tail+=
+local part_tails = {}
+local copy_fn = fn
+local copy_curassembly = name
+while true do
+  local part_tail = vim.fn.fnamemodify(copy_fn, ":t")
+  table.insert(part_tails, 1, part_tail)
+  copy_fn = vim.fn.fnamemodify(copy_fn, ":h")
+
+  copy_curassembly = vim.fn.fnamemodify(copy_curassembly, ":h")
+  if copy_curassembly == "." then
+    break
+  end
+  if copy_curassembly ~= ".." and vim.fn.fnamemodify(copy_curassembly, ":h") ~= ".." then
+    error("Assembly can't be in a subdirectory (it must be either in parent or same directory")
+  end
+end
+local part_tail = table.concat(part_tails, ".")

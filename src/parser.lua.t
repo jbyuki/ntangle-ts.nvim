@@ -18,8 +18,7 @@ end
 local lang = {}
 
 @save_buffer_language+=
-local ft = vim.api.nvim_buf_get_option(buf, "ft")
-lang[buf] = ft
+lang[buf] = ext
 
 @mutate_highlighter_for_ntangle+=
 local local_parser = vim.treesitter.get_parser()

@@ -66,7 +66,7 @@ function M.attach()
 	
 	vim.treesitter.highlighter.new(parser, {})
 	
-	vim.api.nvim_command("set ft=" .. ext)
+	-- @set_filetype_to_original_language
 
   vim.fn.matchadd("Conceal", [[\(^\s*@.*\)\@<=_]], 10, -1, { conceal = ' '})
   -- vim.fn.matchadd("Conceal", [[^\s*\zs@\ze.*\([^=]\)]], 10, -1, { conceal = ''})
@@ -1024,8 +1024,7 @@ function M.attach()
 
   backbuf[buf] = true
   
-  local ft = vim.api.nvim_buf_get_option(buf, "ft")
-  lang[buf] = ft
+  lang[buf] = ext
   
   local local_parser = vim.treesitter.get_parser()
   local_parser._callbacks.changedtree = {}

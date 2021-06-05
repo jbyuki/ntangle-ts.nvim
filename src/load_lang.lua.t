@@ -13,3 +13,6 @@ if not vim._ts_has_language(ext) then
   -- pcall(function() vim._ts_add_language(path, ext) end)
   vim._ts_add_language(path, ext)
 end
+
+@set_filetype_to_original_language+=
+vim.api.nvim_command("set ft=" .. ext)

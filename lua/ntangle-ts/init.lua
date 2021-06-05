@@ -62,11 +62,11 @@ function M.attach()
     -- pcall(function() vim._ts_add_language(path, ext) end)
     vim._ts_add_language(path, ext)
   end
+  
 	local parser = vim.treesitter.get_parser(buf, ext)
 	
 	vim.treesitter.highlighter.new(parser, {})
-	
-	-- @set_filetype_to_original_language
+	vim.api.nvim_command("set ft=" .. ext)
 
   vim.fn.matchadd("Conceal", [[\(^\s*@.*\)\@<=_]], 10, -1, { conceal = ' '})
   -- vim.fn.matchadd("Conceal", [[^\s*\zs@\ze.*\([^=]\)]], 10, -1, { conceal = ''})

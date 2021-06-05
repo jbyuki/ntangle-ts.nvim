@@ -8,6 +8,3 @@ local parser = vim.treesitter.get_parser(buf, ext)
 
 @create_highlighter_for_buffer+=
 vim.treesitter.highlighter.new(parser, {})
-
-@set_filetype_to_original_language+=
-vim.api.nvim_command("set ft=" .. ext)

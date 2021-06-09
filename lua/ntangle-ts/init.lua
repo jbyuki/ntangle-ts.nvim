@@ -1109,6 +1109,10 @@ function M.attach()
       
       if new_end_row == 0 then
         local line = get_line(buf, start_row)
+        for i=string.len(line),start_col+new_end_col do
+          line = line .. " "
+        end
+        
         state[start_row+1] = state[start_row+1]:sub(1, start_col) .. line:sub(start_col+1, start_col+new_end_col) .. state[start_row+1]:sub(start_col+1)
       else
         for i=1,new_end_row-1 do

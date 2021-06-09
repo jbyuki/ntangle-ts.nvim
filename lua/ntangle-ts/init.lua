@@ -1095,14 +1095,16 @@ function M.attach()
           state[start_row+1] = state[start_row+1]:sub(1, start_col) .. state[start_row+1]:sub(start_col+end_col+1)
         end
       else
-        for i=1,end_row-1 do
-          table.remove(state, i+start_row+1)
-        end
       
         local beg = state[start_row+1]:sub(1, start_col)
         local rest = (state[start_row+end_row+1] or ""):sub(end_col+1)
-        state[start_row+1] = beg .. rest
+      
         table.remove(state, start_row+end_row+1)
+      
+        for i=1,end_row-1 do
+          table.remove(state, i+start_row+1)
+        end
+        state[start_row+1] = beg .. rest
       end
       
       if new_end_row == 0 then
@@ -1115,8 +1117,8 @@ function M.attach()
         end
       
         local line = get_line(buf, start_row)
-        local beg = state[start_row+1]:sub(1, start_col)
-        local rest = state[start_row+1]:sub(start_col+1)
+        local beg = (state[start_row+1] or ""):sub(1, start_col)
+        local rest = (state[start_row+1] or ""):sub(start_col+1)
         state[start_row+1] = beg .. line:sub(start_col+1)
       
         local line = get_line(buf, start_row+new_end_row)

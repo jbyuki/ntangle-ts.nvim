@@ -7,6 +7,8 @@ local buf_backup = {}
 
 local overriden = false
 
+local states = {}
+
 local getLinetype
 
 local tangleRec
@@ -34,6 +36,15 @@ local ns
 local lang = {}
 
 local linkedlist = {}
+
+local function get_line(buf, row)
+  local line = vim.api.nvim_buf_get_lines(buf, row, row+1, false)
+  if #line == 0 then
+    return ""
+  else
+    return line[1]
+  end
+end
 
 local M = {}
 function M.attach()
@@ -1071,29 +1082,69 @@ function M.attach()
     backlookup[buf] = lookup
   end
   
+  states[bufname] = vim.api.nvim_buf_get_lines(0, 0, -1, true)
+  
 
   vim.api.nvim_buf_attach(buf, true, {
     on_bytes = function(...)
       local _, _, _, start_row, start_col, _, end_row, end_col, _, new_end_row, new_end_col, _ = unpack({...})
+      local state = states[bufname]
+      
+      if end_row == 0 then
+        if start_row+1 <= #state then
+          state[start_row+1] = state[start_row+1]:sub(1, start_col) .. state[start_row+1]:sub(start_col+end_col+1)
+        end
+      else
+        for i=1,end_row-1 do
+          table.remove(state, i+start_row+1)
+        end
+      
+        local beg = state[start_row+1]:sub(1, start_col)
+        local rest = (state[start_row+end_row+1] or ""):sub(end_col+1)
+        state[start_row+1] = beg .. rest
+        table.remove(state, start_row+end_row+1)
+      end
+      
+      if new_end_row == 0 then
+        local line = get_line(buf, start_row)
+        state[start_row+1] = state[start_row+1]:sub(1, start_col) .. line:sub(start_col+1, start_col+new_end_col) .. state[start_row+1]:sub(start_col+1)
+      else
+        for i=1,new_end_row-1 do
+          local line = get_line(buf, start_row+i)
+          table.insert(state, i+start_row+1, line)
+        end
+      
+        local line = get_line(buf, start_row)
+        local beg = state[start_row+1]:sub(1, start_col)
+        local rest = state[start_row+1]:sub(start_col+1)
+        state[start_row+1] = beg .. line:sub(start_col+1)
+      
+        local line = get_line(buf, start_row+new_end_row)
+        table.insert(state, start_row+new_end_row+1, line:sub(1, new_end_col) .. rest)
+      end
+      
+      
+      states[bufname] = state
+      
       -- text ranges = nightmare!
       local firstline = start_row
-      local lastline
-      local new_lastline
-      if end_row == new_end_row then
-        lastline = start_row+end_row+1
-        new_lastline = start_row+new_end_row+1
-      else
-        if end_col > 0 or start_col > 0 then
-          lastline = start_row+end_row+1
-        else
-          lastline = start_row+end_row
-        end
-        if new_end_col > 0  or start_col > 0 then
-          new_lastline = start_row+new_end_row+1
-        else
-          new_lastline = start_row+new_end_row
-        end
-      end
+      local lastline = start_row + end_row + 1
+      local new_lastline = start_row + new_end_row + 1
+      -- if end_row == new_end_row then
+        -- lastline = start_row+end_row+1
+        -- new_lastline = start_row+new_end_row+1
+      -- else
+        -- if end_col > 0 or start_col > 0 then
+          -- lastline = start_row+end_row+1
+        -- else
+          -- lastline = start_row+end_row
+        -- end
+        -- if new_end_col > 0  or start_col > 0 then
+          -- new_lastline = start_row+new_end_row+1
+        -- else
+          -- new_lastline = start_row+new_end_row
+        -- end
+      -- end
       
       -- print(vim.inspect({...}) .. " " .. firstline .. "," .. lastline .. "," .. new_lastline)
 
@@ -1757,9 +1808,9 @@ function M.attach()
       end
       
       for i=firstline,new_lastline-1 do
-        local line = vim.api.nvim_buf_get_lines(buf, i, i+1, false)
-        if #line > 0 then
-          start_buf, end_buf, insert_after = insert_line(i, line[1], start_buf, end_buf, insert_after)
+        local line = state[i+1]
+        if line then
+          start_buf, end_buf, insert_after = insert_line(i, line, start_buf, end_buf, insert_after)
         end
       end
       
@@ -1917,6 +1968,14 @@ function M.attach()
   })
 end
 
+function M.show_state()
+  local bufname = string.lower(vim.api.nvim_buf_get_name(0))
+  local state = states[bufname]
+
+  for i, line in ipairs(state) do
+    print(i, vim.inspect(line))
+  end
+end
 function M.print_lookup()
   print("backlookup " .. vim.inspect(backlookup))
 end

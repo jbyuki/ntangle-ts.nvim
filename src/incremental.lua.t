@@ -266,9 +266,9 @@ end
 
 @add_lines_incremental+=
 for i=firstline,new_lastline-1 do
-  local line = vim.api.nvim_buf_get_lines(buf, i, i+1, false)
-  if #line > 0 then
-    start_buf, end_buf, insert_after = insert_line(i, line[1], start_buf, end_buf, insert_after)
+  local line = state[i+1]
+  if line then
+    start_buf, end_buf, insert_after = insert_line(i, line, start_buf, end_buf, insert_after)
   end
 end
 

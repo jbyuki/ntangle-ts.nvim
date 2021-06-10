@@ -37,6 +37,7 @@ function M.attach()
 
   @fill_lookup_table
   @init_text_state
+  @send_init_text_to_callbacks
 
   vim.api.nvim_buf_attach(buf, true, {
     on_bytes = function(...)

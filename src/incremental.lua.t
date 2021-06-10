@@ -396,7 +396,10 @@ if op == "=" then
   l.tangled = { start_file }
   l.extra_tangled = end_file
 
+  @find_root_section_filename
+
   root_set[l.str] = {
+    filename = filename,
     start_file = start_file,
     end_file = end_file,
     parser = vim._create_ts_parser(ext),

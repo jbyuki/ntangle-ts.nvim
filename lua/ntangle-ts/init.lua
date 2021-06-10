@@ -35,6 +35,10 @@ local ns
 
 local lang = {}
 
+local cbs_change = {}
+
+local cbs_init = {}
+
 local linkedlist = {}
 
 local function get_line(buf, row)
@@ -213,7 +217,30 @@ function M.attach()
         l.tangled = { start_file }
         l.extra_tangled = end_file
       
+        local filename
+        local buf_asm = (buf_vars[bufname] and buf_vars[bufname].buf_asm) or ""
+        
+        local parent_assembly
+        parent_assembly = vim.fn.fnamemodify(buf_asm, ":h")
+        
+        local root_name = name
+        if name == "*" then
+          root_name = "tangle/" .. vim.fn.fnamemodify(bufname, ":t:r")
+        else
+        	if string.find(name, "/") then
+        		root_name = name
+        	else
+        		root_name = "tangle/" .. name
+        	end
+        end
+        
+        local cur_dir = vim.fn.fnamemodify(bufname, ":h")
+        filename = cur_dir .. "/" .. parent_assembly .. "/" .. root_name
+        filename = string.lower(filename)
+        
+      
         root_set[l.str] = {
+          filename = filename,
           start_file = start_file,
           end_file = end_file,
           parser = vim._create_ts_parser(ext),
@@ -775,7 +802,30 @@ function M.attach()
               l.tangled = { start_file }
               l.extra_tangled = end_file
             
+              local filename
+              local buf_asm = (buf_vars[bufname] and buf_vars[bufname].buf_asm) or ""
+              
+              local parent_assembly
+              parent_assembly = vim.fn.fnamemodify(buf_asm, ":h")
+              
+              local root_name = name
+              if name == "*" then
+                root_name = "tangle/" .. vim.fn.fnamemodify(bufname, ":t:r")
+              else
+              	if string.find(name, "/") then
+              		root_name = name
+              	else
+              		root_name = "tangle/" .. name
+              	end
+              end
+              
+              local cur_dir = vim.fn.fnamemodify(bufname, ":h")
+              filename = cur_dir .. "/" .. parent_assembly .. "/" .. root_name
+              filename = string.lower(filename)
+              
+            
               root_set[l.str] = {
+                filename = filename,
                 start_file = start_file,
                 end_file = end_file,
                 parser = vim._create_ts_parser(ext),
@@ -1083,6 +1133,26 @@ function M.attach()
   end
   
   states[bufname] = vim.api.nvim_buf_get_lines(0, 0, -1, true)
+  
+  for name, root in pairs(root_set) do
+    local start_file = root.start_file
+    local end_file = root.end_file
+  
+    local source_lines = {}
+  
+    local it = start_file
+    while it ~= end_file do
+      local line = it.data
+      if line.linetype == LineType.TANGLED then
+        table.insert(source_lines, line.line)
+      end
+      it = it.next
+    end
+  
+    for _, cbs in ipairs(cbs_init) do
+      cbs(root.filename, source_lines)
+    end
+  end
   
 
   vim.api.nvim_buf_attach(buf, true, {
@@ -1700,7 +1770,30 @@ function M.attach()
                   l.tangled = { start_file }
                   l.extra_tangled = end_file
                 
+                  local filename
+                  local buf_asm = (buf_vars[bufname] and buf_vars[bufname].buf_asm) or ""
+                  
+                  local parent_assembly
+                  parent_assembly = vim.fn.fnamemodify(buf_asm, ":h")
+                  
+                  local root_name = name
+                  if name == "*" then
+                    root_name = "tangle/" .. vim.fn.fnamemodify(bufname, ":t:r")
+                  else
+                  	if string.find(name, "/") then
+                  		root_name = name
+                  	else
+                  		root_name = "tangle/" .. name
+                  	end
+                  end
+                  
+                  local cur_dir = vim.fn.fnamemodify(bufname, ":h")
+                  filename = cur_dir .. "/" .. parent_assembly .. "/" .. root_name
+                  filename = string.lower(filename)
+                  
+                
                   root_set[l.str] = {
+                    filename = filename,
                     start_file = start_file,
                     end_file = end_file,
                     parser = vim._create_ts_parser(ext),
@@ -1850,6 +1943,15 @@ function M.attach()
                     start_row, start_col,
                     start_row+old_row, old_end_col,
                     start_row+new_row, new_end_col)
+                  for _, cbs in ipairs(cbs_change) do
+                    cbs(root.filename,
+                      start_byte,start_byte+old_byte,start_byte+new_byte,
+                      start_row, start_col,
+                      start_row+old_row, old_end_col,
+                      start_row+new_row, new_end_col,
+                      { it.data.line })
+                  end
+                  
                 end
                 
               end
@@ -1873,6 +1975,15 @@ function M.attach()
                   start_row, start_col,
                   start_row+old_row, old_end_col,
                   start_row+new_row, new_end_col)
+                for _, cbs in ipairs(cbs_change) do
+                  cbs(root.filename,
+                    start_byte,start_byte+old_byte,start_byte+new_byte,
+                    start_row, start_col,
+                    start_row+old_row, old_end_col,
+                    start_row+new_row, new_end_col,
+                    { it.data.line })
+                end
+                
               end
               
               if source_len == 0 then
@@ -2423,6 +2534,19 @@ function M.override()
   -- vim-match? and match? don't support string sources
   vim.treesitter.add_predicate("vim-match?", lua_match, true)
   vim.treesitter.add_predicate("match?", lua_match, true)
+end
+
+function M.register(opts)
+  if opts and type(opts) == "table" then
+    if opts.on_change then
+      table.insert(cbs_change, opts.on_change)
+    end
+    
+    if opts.on_init then
+      table.insert(cbs_init, opts.on_init)
+    end
+    
+  end
 end
 
 function linkedlist.push_back(list, el)

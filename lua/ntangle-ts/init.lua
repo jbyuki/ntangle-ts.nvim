@@ -1150,7 +1150,7 @@ function M.attach()
     end
   
     for _, cbs in ipairs(cbs_init) do
-      cbs(root.filename, source_lines)
+      cbs(root.filename, ext, source_lines)
     end
   end
   

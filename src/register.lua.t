@@ -17,10 +17,10 @@ end
 @send_to_cbs+=
 for _, cbs in ipairs(cbs_change) do
   cbs(root.filename,
-    start_byte,start_byte+old_byte,start_byte+new_byte,
+    start_byte,old_byte,new_byte,
     start_row, start_col,
-    start_row+old_row, old_end_col,
-    start_row+new_row, new_end_col,
+    old_row, old_end_col,
+    new_row, new_end_col,
     { it.data.line })
 end
 

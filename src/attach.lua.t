@@ -9,7 +9,8 @@ function M.attach()
   @require_language
 	@create_parser_for_buffer
 	@create_highlighter_for_buffer
-	@set_filetype_to_original_language
+	-- @set_filetype_to_original_language
+  @enable_filetype_indent
 
   @enable_conceal_reference_names
   -- @enable_foldexpr_for_ntangle

@@ -16,3 +16,9 @@ end
 
 @set_filetype_to_original_language+=
 vim.api.nvim_command("set ft=" .. ext)
+
+@enable_filetype_indent+=
+vim.api.nvim_command("set ei=FileType")
+vim.api.nvim_command("set ft=" .. ext)
+vim.api.nvim_command("runtime! indent/" .. ext .. '.vim')
+vim.api.nvim_command("set ei=")

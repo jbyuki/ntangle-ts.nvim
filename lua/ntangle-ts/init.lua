@@ -81,7 +81,11 @@ function M.attach()
 	local parser = vim.treesitter.get_parser(buf, ext)
 	
 	vim.treesitter.highlighter.new(parser, {})
-	vim.api.nvim_command("set ft=" .. ext)
+	-- @set_filetype_to_original_language
+  vim.api.nvim_command("set ei=FileType")
+  vim.api.nvim_command("set ft=" .. ext)
+  vim.api.nvim_command("runtime! indent/" .. ext .. '.vim')
+  vim.api.nvim_command("set ei=")
 
   vim.fn.matchadd("Conceal", [[\(^\s*@.*\)\@<=_]], 10, -1, { conceal = ' '})
   -- vim.fn.matchadd("Conceal", [[^\s*\zs@\ze.*\([^=]\)]], 10, -1, { conceal = ''})
@@ -236,7 +240,7 @@ function M.attach()
         
         local cur_dir = vim.fn.fnamemodify(bufname, ":h")
         filename = cur_dir .. "/" .. parent_assembly .. "/" .. root_name
-        filename = string.lower(filename)
+        filename = string.lower(filename:gsub("\\", "/"))
         
       
         root_set[l.str] = {
@@ -821,7 +825,7 @@ function M.attach()
               
               local cur_dir = vim.fn.fnamemodify(bufname, ":h")
               filename = cur_dir .. "/" .. parent_assembly .. "/" .. root_name
-              filename = string.lower(filename)
+              filename = string.lower(filename:gsub("\\", "/"))
               
             
               root_set[l.str] = {
@@ -1789,7 +1793,7 @@ function M.attach()
                   
                   local cur_dir = vim.fn.fnamemodify(bufname, ":h")
                   filename = cur_dir .. "/" .. parent_assembly .. "/" .. root_name
-                  filename = string.lower(filename)
+                  filename = string.lower(filename:gsub("\\", "/"))
                   
                 
                   root_set[l.str] = {

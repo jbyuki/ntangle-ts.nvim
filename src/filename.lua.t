@@ -18,7 +18,7 @@ end
 
 local cur_dir = vim.fn.fnamemodify(bufname, ":h")
 filename = cur_dir .. "/" .. parent_assembly .. "/" .. root_name
-filename = string.lower(filename)
+filename = string.lower(filename:gsub("\\", "/"))
 
 @extract_assembly_parent_directory+=
 local parent_assembly

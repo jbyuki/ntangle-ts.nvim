@@ -2553,6 +2553,41 @@ function M.register(opts)
   end
 end
 
+function M.reverse_lookup(fname, lnum)
+  local bufname = vim.api.nvim_buf_get_name(0)
+  bufname = string.lower(bufname)
+  if buf_vars[bufname] then
+    local buf_asm = buf_vars[bufname].buf_asm
+    local root_set = asm_namespaces[buf_asm].root_set
+
+    for name, root in pairs(root_set) do
+      if root.filename == fname then
+        local line = root.start_file
+        local i = 0
+        while i < lnum do
+          if line == root.end_file then
+            line = nil
+            break
+          end
+          line = line.next
+        
+          if line.data.linetype ~= LineType.SENTINEL then
+            i = i + 1
+          end
+        end
+        
+        if line then
+          local untangled = line.data.untangled
+          if untangled then
+            return untangled.data.lnum
+          end
+        end
+        return nil
+      end
+    end
+  end
+end
+
 function linkedlist.push_back(list, el)
 	local node = { data = el }
 	

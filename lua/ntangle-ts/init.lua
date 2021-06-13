@@ -360,7 +360,7 @@ function M.attach()
               local new_node = linkedlist.insert_after(tangled_ll, ref, {
                 linetype = LineType.TANGLED,
                 prefix = ref.data.prefix,
-                line = ref.data.prefix .. line,
+                line = (line ~= "" and ref.data.prefix .. line) or "",
                 untangled = it,
                 insert = true,
               })
@@ -897,7 +897,7 @@ function M.attach()
                 local new_node = linkedlist.insert_after(tangled_ll, ref, {
                   linetype = LineType.TANGLED,
                   prefix = ref.data.prefix,
-                  line = ref.data.prefix .. line,
+                  line = (line ~= "" and ref.data.prefix .. line) or "",
                   untangled = it,
                   insert = true,
                 })
@@ -953,7 +953,7 @@ function M.attach()
           local new_node = linkedlist.insert_after(tangled_ll, ref, {
             linetype = LineType.TANGLED,
             prefix = ref.data.prefix,
-            line = ref.data.prefix .. line,
+            line = (line ~= "" and ref.data.prefix .. line) or "",
             untangled = it,
             insert = true,
           })
@@ -1377,7 +1377,7 @@ function M.attach()
                   local new_node = linkedlist.insert_after(tangled_ll, ref, {
                     linetype = LineType.TANGLED,
                     prefix = ref.data.prefix,
-                    line = ref.data.prefix .. line,
+                    line = (line ~= "" and ref.data.prefix .. line) or "",
                     untangled = it,
                     insert = true,
                   })
@@ -1865,7 +1865,7 @@ function M.attach()
                     local new_node = linkedlist.insert_after(tangled_ll, ref, {
                       linetype = LineType.TANGLED,
                       prefix = ref.data.prefix,
-                      line = ref.data.prefix .. line,
+                      line = (line ~= "" and ref.data.prefix .. line) or "",
                       untangled = it,
                       insert = true,
                     })

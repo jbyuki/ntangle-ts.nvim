@@ -15,7 +15,9 @@ if backbuf[buf] then
   @convert_line_number_to_untangled
   if lookup and lookup[line+1] then
     local tline = line
-    local line, indent, tstree, sources = unpack(lookup[line+1])
+    local line, indent, root = unpack(lookup[line+1])
+    local tstree = root.tree
+    local sources = root.sources
     line = line - 1
     @get_current_highlighter
     @highlight_from_backbuf

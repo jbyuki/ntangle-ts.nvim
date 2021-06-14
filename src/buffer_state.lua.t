@@ -26,7 +26,7 @@ else
   table.remove(state, start_row+end_row+1)
 
   for i=1,end_row-1 do
-    table.remove(state, i+start_row+1)
+    table.remove(state, start_row+2)
   end
   state[start_row+1] = beg .. rest
 end

@@ -1154,7 +1154,7 @@ function M.attach()
     end
 
     for _, cbs in ipairs(cbs_init) do
-      cbs(root.filename, ext, source_lines)
+      cbs(buf, root.filename, ext, source_lines)
     end
   end
 
@@ -1948,7 +1948,7 @@ function M.attach()
                     start_row+old_row, old_end_col,
                     start_row+new_row, new_end_col)
                   for _, cbs in ipairs(cbs_change) do
-                    cbs(root.filename,
+                    cbs(buf, root.filename,
                       start_byte,old_byte,new_byte,
                       start_row, start_col,
                       old_row, old_end_col,
@@ -1980,7 +1980,7 @@ function M.attach()
                   start_row+old_row, old_end_col,
                   start_row+new_row, new_end_col)
                 for _, cbs in ipairs(cbs_change) do
-                  cbs(root.filename,
+                  cbs(buf, root.filename,
                     start_byte,old_byte,new_byte,
                     start_row, start_col,
                     old_row, old_end_col,

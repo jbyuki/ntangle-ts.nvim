@@ -16,7 +16,7 @@ end
 
 @send_to_cbs+=
 for _, cbs in ipairs(cbs_change) do
-  cbs(root.filename,
+  cbs(buf, root.filename,
     start_byte,old_byte,new_byte,
     start_row, start_col,
     old_row, old_end_col,
@@ -53,5 +53,5 @@ end
 
 @send_to_init_callbacks+=
 for _, cbs in ipairs(cbs_init) do
-  cbs(root.filename, ext, source_lines)
+  cbs(buf, root.filename, ext, source_lines)
 end

@@ -186,6 +186,7 @@ if cur_delete.data.linetype == LineType.SECTION then
 @remove_sentinel_or_bisentinel+=
 if cur_delete.data.op == "=" then
   @remove_bisentinel
+  @append_delete_root_section_event
   @remove_from_roots
 else
   for _, ref in ipairs(cur_delete.data.tangled) do

@@ -43,6 +43,8 @@ local cbs_deinit = {}
 
 local init_events = {}
 
+local deinit_events = {}
+
 local linkedlist = {}
 
 local function get_line(buf, row)
@@ -471,6 +473,11 @@ function M.attach()
             if cur_delete.data.op == "=" then
               linkedlist.remove(tangled_ll, cur_delete.data.tangled[1])
               linkedlist.remove(tangled_ll, cur_delete.data.extra_tangled)
+
+              local root = root_set[cur_delete.data.str]
+              if root and root.filename then
+                table.insert(delete_events, root.filename)
+              end
 
               root_set[cur_delete.data.str] = nil
 
@@ -1215,27 +1222,9 @@ function M.attach()
 
       states[bufname] = state
 
-      -- text ranges = nightmare!
       local firstline = start_row
       local lastline = start_row + end_row + 1
       local new_lastline = start_row + new_end_row + 1
-      -- if end_row == new_end_row then
-        -- lastline = start_row+end_row+1
-        -- new_lastline = start_row+new_end_row+1
-      -- else
-        -- if end_col > 0 or start_col > 0 then
-          -- lastline = start_row+end_row+1
-        -- else
-          -- lastline = start_row+end_row
-        -- end
-        -- if new_end_col > 0  or start_col > 0 then
-          -- new_lastline = start_row+new_end_row+1
-        -- else
-          -- new_lastline = start_row+new_end_row
-        -- end
-      -- end
-
-      -- print(vim.inspect({...}) .. " " .. firstline .. "," .. lastline .. "," .. new_lastline)
 
       local delete_this = start_buf.next
       for _=1,lastline-1 do
@@ -1252,6 +1241,11 @@ function M.attach()
           if cur_delete.data.op == "=" then
             linkedlist.remove(tangled_ll, cur_delete.data.tangled[1])
             linkedlist.remove(tangled_ll, cur_delete.data.extra_tangled)
+
+            local root = root_set[cur_delete.data.str]
+            if root and root.filename then
+              table.insert(delete_events, root.filename)
+            end
 
             root_set[cur_delete.data.str] = nil
 
@@ -1440,6 +1434,11 @@ function M.attach()
                 if cur_delete.data.op == "=" then
                   linkedlist.remove(tangled_ll, cur_delete.data.tangled[1])
                   linkedlist.remove(tangled_ll, cur_delete.data.extra_tangled)
+
+                  local root = root_set[cur_delete.data.str]
+                  if root and root.filename then
+                    table.insert(delete_events, root.filename)
+                  end
 
                   root_set[cur_delete.data.str] = nil
 
@@ -2121,6 +2120,13 @@ function M.attach()
         end
       end
       init_events = {}
+
+      for _, fn in ipairs(deinit_events) do
+        for _, cbs in ipairs(cbs_deinit) do
+          cbs(buf, fn, ext)
+        end
+      end
+
     end,
   })
 end

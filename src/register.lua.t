@@ -81,3 +81,20 @@ for _, name in ipairs(init_events) do
   end
 end
 init_events = {}
+
+@script_variables+=
+local deinit_events = {}
+
+@append_delete_root_section_event+=
+local root = root_set[cur_delete.data.str]
+if root and root.filename then
+  table.insert(delete_events, root.filename)
+end
+
+@send_deinit_events_to_callbacks+=
+for _, fn in ipairs(deinit_events) do
+  for _, cbs in ipairs(cbs_deinit) do
+    cbs(buf, fn, ext)
+  end
+end
+

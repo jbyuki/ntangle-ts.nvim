@@ -51,6 +51,8 @@ function M.attach()
       @generate_tangled_code
       @parse_everything_again
       @fill_lookup_table
+
+      @send_init_events_to_callbacks
     end,
   })
 end

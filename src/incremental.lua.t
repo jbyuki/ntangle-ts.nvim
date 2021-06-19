@@ -406,6 +406,7 @@ if op == "=" then
     tree = nil,
   }
 
+  @append_to_init_event
 end
 
 @remove_lines_after_section_in_untangled_in_tangled+=

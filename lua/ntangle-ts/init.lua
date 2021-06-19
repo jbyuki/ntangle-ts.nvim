@@ -39,6 +39,10 @@ local cbs_change = {}
 
 local cbs_init = {}
 
+local cbs_deinit = {}
+
+local init_events = {}
+
 local linkedlist = {}
 
 local function get_line(buf, row)
@@ -250,6 +254,8 @@ function M.attach()
           parser = vim._create_ts_parser(ext),
           tree = nil,
         }
+
+        table.insert(init_events, l.str)
 
       end
 
@@ -836,6 +842,8 @@ function M.attach()
                 tree = nil,
               }
 
+              table.insert(init_events, l.str)
+
             end
 
 
@@ -1156,6 +1164,7 @@ function M.attach()
     for _, cbs in ipairs(cbs_init) do
       cbs(buf, root.filename, ext, source_lines)
     end
+
   end
 
 
@@ -1804,6 +1813,8 @@ function M.attach()
                     tree = nil,
                   }
 
+                  table.insert(init_events, l.str)
+
                 end
 
 
@@ -2085,6 +2096,31 @@ function M.attach()
         backlookup[buf] = lookup
       end
 
+
+      for _, name in ipairs(init_events) do
+        local root = root_set[name]
+        if root then
+          local start_file = root.start_file
+          local end_file = root.end_file
+
+          local source_lines = {}
+
+          local it = start_file
+          while it ~= end_file do
+            local line = it.data
+            if line.linetype == LineType.TANGLED then
+              table.insert(source_lines, line.line)
+            end
+            it = it.next
+          end
+
+          for _, cbs in ipairs(cbs_init) do
+            cbs(buf, root.filename, ext, source_lines)
+          end
+
+        end
+      end
+      init_events = {}
     end,
   })
 end
@@ -2556,6 +2592,10 @@ function M.register(opts)
 
     if opts.on_init then
       table.insert(cbs_init, opts.on_init)
+    end
+
+    if opts.on_deinit then
+      table.insert(cbs_deinit, opts.on_deinit)
     end
 
   end

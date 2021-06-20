@@ -1173,6 +1173,7 @@ function M.attach()
     end
 
   end
+  init_events = {}
 
 
   vim.api.nvim_buf_attach(buf, true, {

@@ -37,6 +37,7 @@ for name, root in pairs(root_set) do
   @get_tangled_source_for_root_section
   @send_to_init_callbacks
 end
+init_events = {}
 
 @get_tangled_source_for_root_section+=
 local start_file = root.start_file

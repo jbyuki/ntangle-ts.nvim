@@ -88,7 +88,7 @@ local deinit_events = {}
 @append_delete_root_section_event+=
 local root = root_set[cur_delete.data.str]
 if root and root.filename then
-  table.insert(delete_events, root.filename)
+  table.insert(deinit_events, root.filename)
 end
 
 @send_deinit_events_to_callbacks+=

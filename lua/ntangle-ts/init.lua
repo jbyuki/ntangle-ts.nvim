@@ -476,7 +476,7 @@ function M.attach()
 
               local root = root_set[cur_delete.data.str]
               if root and root.filename then
-                table.insert(delete_events, root.filename)
+                table.insert(deinit_events, root.filename)
               end
 
               root_set[cur_delete.data.str] = nil
@@ -1244,7 +1244,7 @@ function M.attach()
 
             local root = root_set[cur_delete.data.str]
             if root and root.filename then
-              table.insert(delete_events, root.filename)
+              table.insert(deinit_events, root.filename)
             end
 
             root_set[cur_delete.data.str] = nil
@@ -1437,7 +1437,7 @@ function M.attach()
 
                   local root = root_set[cur_delete.data.str]
                   if root and root.filename then
-                    table.insert(delete_events, root.filename)
+                    table.insert(deinit_events, root.filename)
                   end
 
                   root_set[cur_delete.data.str] = nil
@@ -2633,7 +2633,7 @@ function M.reverse_lookup(fname, lnum)
         if line then
           local untangled = line.data.untangled
           if untangled then
-            return untangled.data.lnum
+            return untangled.data.lnum, untangled.data.buf
           end
         end
         return nil

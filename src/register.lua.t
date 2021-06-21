@@ -71,10 +71,10 @@ end
 local init_events = {}
 
 @append_to_init_event+=
-table.insert(init_events, l.str)
+init_events[l.str] = true
 
 @send_init_events_to_callbacks+=
-for _, name in ipairs(init_events) do
+for name,_ in pairs(init_events) do
   local root = root_set[name]
   if root then
     @get_tangled_source_for_root_section
@@ -89,13 +89,26 @@ local deinit_events = {}
 @append_delete_root_section_event+=
 local root = root_set[cur_delete.data.str]
 if root and root.filename then
-  table.insert(deinit_events, root.filename)
+  deinit_events[root.filename] = true
 end
 
 @send_deinit_events_to_callbacks+=
-for _, fn in ipairs(deinit_events) do
+for fn, _ in pairs(deinit_events) do
   for _, cbs in ipairs(cbs_deinit) do
     cbs(buf, fn, ext)
   end
 end
+deinit_events = {}
 
+@cancel_out_same_deinit_and_init_events+=
+local fns = vim.tbl_keys(init_events)
+for _, name in ipairs(fns) do
+  local root = root_set[name]
+  if root then
+    local fn = root.filename
+    if deinit_events[fn] then
+      init_events[name] = nil
+      deinit_events[fn] = nil
+    end
+  end
+end

@@ -36,6 +36,6 @@ end
 if line then
   local untangled = line.data.untangled
   if untangled then
-    return untangled.data.lnum, untangled.data.buf
+    return untangled.data.lnum, untangled.data.buf, untangled.data.str
   end
 end

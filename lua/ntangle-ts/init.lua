@@ -257,7 +257,7 @@ function M.attach()
           tree = nil,
         }
 
-        table.insert(init_events, l.str)
+        init_events[l.str] = true
 
       end
 
@@ -476,7 +476,7 @@ function M.attach()
 
               local root = root_set[cur_delete.data.str]
               if root and root.filename then
-                table.insert(deinit_events, root.filename)
+                deinit_events[root.filename] = true
               end
 
               root_set[cur_delete.data.str] = nil
@@ -849,7 +849,7 @@ function M.attach()
                 tree = nil,
               }
 
-              table.insert(init_events, l.str)
+              init_events[l.str] = true
 
             end
 
@@ -1245,7 +1245,7 @@ function M.attach()
 
             local root = root_set[cur_delete.data.str]
             if root and root.filename then
-              table.insert(deinit_events, root.filename)
+              deinit_events[root.filename] = true
             end
 
             root_set[cur_delete.data.str] = nil
@@ -1438,7 +1438,7 @@ function M.attach()
 
                   local root = root_set[cur_delete.data.str]
                   if root and root.filename then
-                    table.insert(deinit_events, root.filename)
+                    deinit_events[root.filename] = true
                   end
 
                   root_set[cur_delete.data.str] = nil
@@ -1813,7 +1813,7 @@ function M.attach()
                     tree = nil,
                   }
 
-                  table.insert(init_events, l.str)
+                  init_events[l.str] = true
 
                 end
 
@@ -2097,7 +2097,25 @@ function M.attach()
       end
 
 
-      for _, name in ipairs(init_events) do
+      local fns = vim.tbl_keys(init_events)
+      for _, name in ipairs(fns) do
+        local root = root_set[name]
+        if root then
+          local fn = root.filename
+          if deinit_events[fn] then
+            init_events[name] = nil
+            deinit_events[fn] = nil
+          end
+        end
+      end
+      for fn, _ in pairs(deinit_events) do
+        for _, cbs in ipairs(cbs_deinit) do
+          cbs(buf, fn, ext)
+        end
+      end
+      deinit_events = {}
+
+      for name,_ in pairs(init_events) do
         local root = root_set[name]
         if root then
           local start_file = root.start_file
@@ -2121,12 +2139,6 @@ function M.attach()
         end
       end
       init_events = {}
-
-      for _, fn in ipairs(deinit_events) do
-        for _, cbs in ipairs(cbs_deinit) do
-          cbs(buf, fn, ext)
-        end
-      end
 
     end,
   })
@@ -2634,7 +2646,7 @@ function M.reverse_lookup(fname, lnum)
         if line then
           local untangled = line.data.untangled
           if untangled then
-            return untangled.data.lnum, untangled.data.buf
+            return untangled.data.lnum, untangled.data.buf, untangled.data.str
           end
         end
         return nil

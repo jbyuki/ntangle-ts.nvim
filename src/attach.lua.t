@@ -52,8 +52,9 @@ function M.attach()
       @parse_everything_again
       @fill_lookup_table
 
-      @send_init_events_to_callbacks
+      @cancel_out_same_deinit_and_init_events
       @send_deinit_events_to_callbacks
+      @send_init_events_to_callbacks
     end,
   })
 end

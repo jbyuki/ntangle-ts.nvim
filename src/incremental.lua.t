@@ -186,6 +186,7 @@ if cur_delete.data.linetype == LineType.SECTION then
 @remove_sentinel_or_bisentinel+=
 if cur_delete.data.op == "=" then
   @remove_bisentinel
+  @append_delete_root_section_event
   @remove_from_roots
 else
   for _, ref in ipairs(cur_delete.data.tangled) do
@@ -396,13 +397,17 @@ if op == "=" then
   l.tangled = { start_file }
   l.extra_tangled = end_file
 
+  @find_root_section_filename
+
   root_set[l.str] = {
+    filename = filename,
     start_file = start_file,
     end_file = end_file,
     parser = vim._create_ts_parser(ext),
     tree = nil,
   }
 
+  @append_to_init_event
 end
 
 @remove_lines_after_section_in_untangled_in_tangled+=
@@ -505,7 +510,7 @@ if tangled then
     local new_node = linkedlist.insert_after(tangled_ll, ref, {
       linetype = LineType.TANGLED,
       prefix = ref.data.prefix,
-      line = ref.data.prefix .. line,
+      line = (line ~= "" and ref.data.prefix .. line) or "",
       untangled = it,
       insert = true,
     })

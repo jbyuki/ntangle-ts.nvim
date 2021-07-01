@@ -55,6 +55,7 @@ if tree then
     start_row, start_col,
     start_row+old_row, old_end_col,
     start_row+new_row, new_end_col)
+  @send_to_cbs
 end
 
 @add_line_to_tangled+=
@@ -80,6 +81,7 @@ if tree then
     start_row, start_col,
     start_row+old_row, old_end_col,
     start_row+new_row, new_end_col)
+  @send_to_cbs
 end
 
 @reset_all_insert+=

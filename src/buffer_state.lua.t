@@ -26,7 +26,7 @@ else
   table.remove(state, start_row+end_row+1)
 
   for i=1,end_row-1 do
-    table.remove(state, i+start_row+1)
+    table.remove(state, start_row+2)
   end
   state[start_row+1] = beg .. rest
 end
@@ -44,6 +44,7 @@ end
 @insert_text_in_range+=
 if new_end_row == 0 then
   local line = get_line(buf, start_row)
+  @append_whitespace_to_insert
   state[start_row+1] = state[start_row+1]:sub(1, start_col) .. line:sub(start_col+1, start_col+new_end_col) .. state[start_row+1]:sub(start_col+1)
 else
   for i=1,new_end_row-1 do
@@ -57,7 +58,17 @@ else
   state[start_row+1] = beg .. line:sub(start_col+1)
 
   local line = get_line(buf, start_row+new_end_row)
-  table.insert(state, start_row+new_end_row+1, line:sub(1, new_end_col) .. rest)
+
+  local new_line = line:sub(1, new_end_col) .. rest
+  -- don't append unncessary empty lines at end
+  if start_row+new_end_row+1 <= #state or new_line ~= "" then
+    table.insert(state, start_row+new_end_row+1, new_line)
+  end
+end
+
+@append_whitespace_to_insert+=
+for i=string.len(line),start_col+new_end_col do
+  line = line .. " "
 end
 
 @implement+=

@@ -31,7 +31,7 @@ for name, root in pairs(root_set) do
       if lookup_buf then
         lookups[lookup_buf] = lookups[lookup_buf] or {}
         local lookup = lookups[lookup_buf]
-        lookup[line.untangled.data.lnum] = { tangle_lnum, string.len(line.prefix), tree, root.sources }
+        lookup[line.untangled.data.lnum] = { tangle_lnum, string.len(line.prefix), root }
       end
       tangle_lnum = tangle_lnum + 1
     end

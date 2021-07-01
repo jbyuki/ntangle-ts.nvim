@@ -9,7 +9,8 @@ function M.attach()
   @require_language
 	@create_parser_for_buffer
 	@create_highlighter_for_buffer
-	@set_filetype_to_original_language
+	-- @set_filetype_to_original_language
+  @enable_filetype_indent
 
   @enable_conceal_reference_names
   -- @enable_foldexpr_for_ntangle
@@ -37,6 +38,7 @@ function M.attach()
 
   @fill_lookup_table
   @init_text_state
+  @send_init_text_to_callbacks
 
   vim.api.nvim_buf_attach(buf, true, {
     on_bytes = function(...)
@@ -49,6 +51,10 @@ function M.attach()
       @generate_tangled_code
       @parse_everything_again
       @fill_lookup_table
+
+      @cancel_out_same_deinit_and_init_events
+      @send_deinit_events_to_callbacks
+      @send_init_events_to_callbacks
     end,
   })
 end
@@ -112,24 +118,6 @@ vim.api.nvim_command [[setlocal fillchars=fold:\ ]]
 vim.api.nvim_command [[setlocal foldtext=ntangle_ts#foldtext()]]
 
 @correct_byte_range+=
--- text ranges = nightmare!
 local firstline = start_row
 local lastline = start_row + end_row + 1
 local new_lastline = start_row + new_end_row + 1
--- if end_row == new_end_row then
-  -- lastline = start_row+end_row+1
-  -- new_lastline = start_row+new_end_row+1
--- else
-  -- if end_col > 0 or start_col > 0 then
-    -- lastline = start_row+end_row+1
-  -- else
-    -- lastline = start_row+end_row
-  -- end
-  -- if new_end_col > 0  or start_col > 0 then
-    -- new_lastline = start_row+new_end_row+1
-  -- else
-    -- new_lastline = start_row+new_end_row
-  -- end
--- end
-
--- print(vim.inspect({...}) .. " " .. firstline .. "," .. lastline .. "," .. new_lastline)

@@ -1217,7 +1217,12 @@ function M.attach()
         state[start_row+1] = beg .. line:sub(start_col+1)
 
         local line = get_line(buf, start_row+new_end_row)
-        table.insert(state, start_row+new_end_row+1, line:sub(1, new_end_col) .. rest)
+
+        local new_line = line:sub(1, new_end_col) .. rest
+        -- don't append unncessary empty lines at end
+        if start_row+new_end_row+1 <= #state or new_line ~= "" then
+          table.insert(state, start_row+new_end_row+1, new_line)
+        end
       end
 
 

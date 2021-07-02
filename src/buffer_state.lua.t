@@ -60,10 +60,9 @@ else
   local line = get_line(buf, start_row+new_end_row)
 
   local new_line = line:sub(1, new_end_col) .. rest
-  -- don't append unncessary empty lines at end
-  if start_row+new_end_row+1 <= #state or new_line ~= "" then
+  -- if start_row+new_end_row+1 <= #state or new_line ~= "" then
     table.insert(state, start_row+new_end_row+1, new_line)
-  end
+  -- end
 end
 
 @append_whitespace_to_insert+=

@@ -64,6 +64,8 @@ function M.attach()
 
   local deps = {}
 
+  local dirty = {}
+
   local mark_dirty
   mark_dirty = function(name, dirty) 
     if dirty[name] then
@@ -77,6 +79,10 @@ function M.attach()
       end
     end
   end
+
+  local reparsed = {}
+
+  local modified_sections = {}
 
   local sections_ll = {}
 
@@ -116,7 +122,7 @@ function M.attach()
       else
         it = linkedlist.push_back(sections_ll[name], sentinel)
       end
-      sentinel.section = it
+      sentinel.data.section = it
 
       if op == "=" then 
         roots[name] = {
@@ -321,6 +327,7 @@ function M.attach()
         linetype = "SECTION"
       end
     end
+
     vim.api.nvim_buf_set_extmark(0, ns_debug, lnum, 0, {
       virt_text = {{line, "NonText"}, {"[" .. linetype .. "]", "WarningMsg"}}
     })
@@ -328,6 +335,293 @@ function M.attach()
     lnum = lnum + 1
   end
 
+
+  local scan_changes
+  scan_changes = function(name, offset, changes, start)
+    if not sections_ll[name] then
+      return offset
+    end
+
+    for cur in linkedlist.iter(sections_ll[name]) do
+      local sec = cur
+      cur = cur.next
+      local skip_part = false
+      if sec.data.deleted == name then
+        local size = 0
+        local cur = sec
+        cur = cur.next
+        local inserted_ref = {}
+        while cur do
+          while cur do
+            if cur.data.type == UNTANGLED.SENTINEL then
+              break
+            end
+            cur = cur.next
+          end
+
+          if not cur then break end
+          local l = cur.data.parsed
+
+          if l.linetype == LineType.TEXT then
+            cur = cur.next
+            local len = 0
+            while cur do
+              if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
+                len = len + string.len(cur.data.sym)
+              elseif cur.data.type == UNTANGLED.SENTINEL then
+                break
+              end
+              cur = cur.next
+            end
+
+            size = size + len
+          elseif l.linetype == LineType.REFERENCE then
+            size = size + size_inserted(l.str, inserted_ref)
+          elseif l.linetype == LineType.SECTION then
+            break
+          end
+
+        end
+
+        if size > 0 then
+          table.insert(changes, { offset, size, 0 })
+        end
+
+        skip_part = true
+      elseif sec.data.inserted == name then
+        local size = 0
+        local cur = sec
+        cur = cur.next
+        local inserted_ref = {}
+        while cur do
+          while cur do
+            if cur.data.type == UNTANGLED.SENTINEL then
+              break
+            end
+            cur = cur.next
+          end
+
+          if not cur then break end
+          local l = cur.data.parsed
+
+          if l.linetype == LineType.TEXT then
+            cur = cur.next
+            local len = 0
+            while cur do
+              if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
+                len = len + string.len(cur.data.sym)
+              elseif cur.data.type == UNTANGLED.SENTINEL then
+                break
+              end
+              cur = cur.next
+            end
+
+            size = size + len
+          elseif l.linetype == LineType.REFERENCE then
+            size = size + size_inserted(l.str, inserted_ref)
+          elseif l.linetype == LineType.SECTION then
+            break
+          end
+
+        end
+
+        if size > 0 then
+          table.insert(changes, { offset, 0, size })
+        end
+
+        offset = offset + size
+        skip_part = true
+      end
+
+      if not skip_part then
+        while cur do
+          while cur do
+            if cur.data.type == UNTANGLED.SENTINEL then
+              break
+            end
+            cur = cur.next
+          end
+
+          if not cur then break end
+          local l = cur.data.parsed
+          if l.linetype == LineType.TEXT then
+            local sentinel = cur
+            local line = ""
+            local changed = false
+            while cur do
+              if cur.data:is_newline() then
+                cur = cur.next
+                break
+              end
+
+              if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
+                line = line .. cur.data.sym
+              end
+
+              if cur.data.deleted or cur.data.inserted then
+                changed = true
+              end
+              cur = cur.next
+            end
+
+            local new_l 
+            if changed then
+              new_l = M.parse(line)
+            end
+
+
+            if new_l then
+              cur = sentinel
+              if new_l.linetype == LineType.TEXT then
+                cur = cur.next
+                while cur do
+                  if cur == start then
+                    local deleted = 0
+                    while cur do
+                      if not cur.data.deleted then
+                        break
+                      end
+                      deleted = deleted + 1
+                      cur = cur.next
+                    end
+
+                    local inserted = 0
+                    while cur do
+                      if not cur.data.inserted then
+                        break
+                      end
+                      inserted = inserted + 1
+                      cur = cur.next
+                    end
+
+                    table.insert(changes, { offset, deleted, inserted })
+
+                  end
+
+                  if cur.data.type == UNTANGLED.CHAR then
+                    if not cur.data.deleted then
+                      offset = offset + 1
+                    end
+                  elseif cur.data.type == UNTANGLED.SENTINEL then
+                    break
+                  end
+                  cur = cur.next
+                end
+
+              elseif new_l.linetype == LineType.REFERENCE then
+                local inserted_ref = {}
+                local inserted = size_inserted(new_l.str, inserted_ref)
+
+                cur = cur.next
+                local len = 0
+                while cur do
+                  if cur.data.type == UNTANGLED.CHAR and not cur.data.inserted then
+                    len = len + string.len(cur.data.sym)
+                  elseif cur.data.type == UNTANGLED.SENTINEL then
+                    break
+                  end
+                  cur = cur.next
+                end
+
+                table.insert(changes, { offset, len, inserted })
+
+              end
+            else
+              cur = sentinel
+              cur = cur.next
+              local len = 0
+              while cur do
+                if cur.data.type == UNTANGLED.CHAR then
+                  len = len + string.len(cur.data.sym)
+                elseif cur.data.type == UNTANGLED.SENTINEL then
+                  break
+                end
+                cur = cur.next
+              end
+
+              offset = offset + len
+            end
+
+          elseif l.linetype == LineType.REFERENCE then
+            local sentinel = cur
+            cur = cur.next
+            local line = ""
+            local changed = false
+            while cur do
+              if cur.data:is_newline() then
+                cur = cur.next
+                break
+              end
+
+              if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
+                line = line .. cur.data.sym
+              end
+
+              if cur.data.deleted or cur.data.inserted then
+                changed = true
+              end
+              cur = cur.next
+            end
+
+            local new_l 
+            if changed then
+              new_l = M.parse(line)
+            end
+
+
+            if new_l then
+              if new_l.linetype == LineType.TEXT then
+                local deleted_ref = {}
+                local deleted = size_deleted(l.str, deleted_ref)
+
+                cur = sentinel
+                cur = cur.next
+                local len = 0
+                while cur do
+                  if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
+                    len = len + string.len(cur.data.sym)
+                  elseif cur.data.type == UNTANGLED.SENTINEL then
+                    break
+                  end
+                  cur = cur.next
+                end
+
+                sentinel.data.new_parsed = new_l
+                table.insert(reparsed, sentinel)
+
+                table.insert(changes, { offset, deleted, len })
+
+                offset = offset + len
+              elseif new_l.linetype == LineType.REFERENCE then
+                local deleted_ref = {}
+                local deleted = size_deleted(l.str, deleted_ref)
+
+                local inserted_ref = {}
+                local inserted = size_inserted(new_l.str, inserted_ref)
+
+                table.insert(changes, { offset, deleted, inserted })
+
+                l.str = new_ref
+              end
+            else
+              if dirty[l.str] then
+                offset = scan_changes(l.str, offset, changes, start)
+              else
+                if ref_sizes[l.str] then
+                  offset = offset + ref_sizes[l.str]
+                end
+              end
+            end
+
+          elseif l.linetype == LineType.SECTION then
+            break
+          end
+
+        end
+      end
+    end
+    return offset
+  end
 
   local size_deleted
   size_deleted = function(name, deleted_ref) 
@@ -441,6 +735,8 @@ function M.attach()
       start_row, start_col, start_byte, 
       old_row, old_col, old_byte, 
       new_row, new_col, new_byte)
+      local front_sections = {}
+      local back_sections = {}
       local cur = content.head
       local sentinel
       local section
@@ -458,13 +754,21 @@ function M.attach()
             section = l.str
           end
 
+          if l.linetype == LineType.SECTION then
+            if l.op == "-=" then
+              front_sections[l.str] = sentinel
+            else
+              back_sections[l.str] = sentinel
+            end
+          end
+
         end
         cur = cur.next
       end
 
+      local start_sentinel = sentinel
       local start = cur
 
-      local dirty = {}
       local to_delete = {}
 
       for i=1,old_byte do
@@ -478,6 +782,13 @@ function M.attach()
           mark_dirty(section, dirty)
         end
 
+
+        if sentinel.data.parsed then
+          local l = sentinel.data.parsed
+          if l.linetype == LineType.SECTION then
+            modified_sections[sentinel] = true
+          end
+        end
 
         while cur do
           cur = cur.next
@@ -500,6 +811,7 @@ function M.attach()
 
 
       local cur = start
+      sentinel = start_sentinel
       local to_insert = {}
       local lines = vim.api.nvim_buf_get_lines(0, start_row, start_row+new_row+1, true)
       lines[1] = string.sub(lines[1], start_col+1)
@@ -527,6 +839,13 @@ function M.attach()
       end
 
 
+      if sentinel.data.parsed then
+        local l = sentinel.data.parsed
+        if l.linetype == LineType.SECTION then
+          modified_sections[sentinel] = true
+        end
+      end
+
       for i=1,new_byte do
         local c = string.sub(text, i, i)
         local n = untangled.new("CHAR")
@@ -543,202 +862,104 @@ function M.attach()
       end
 
 
-      local reparsed = {}
+      for cur, _ in pairs(modified_sections) do
+        local sentinel = cur
+        local line = ""
+        local changed = false
+        while cur do
+          if cur.data:is_newline() then
+            cur = cur.next
+            break
+          end
 
-      local scan_changes
-      scan_changes = function(name, offset, changes, start)
-        if not sections_ll[name] then
-          return
+          if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
+            line = line .. cur.data.sym
+          end
+
+          if cur.data.deleted or cur.data.inserted then
+            changed = true
+          end
+          cur = cur.next
         end
 
-        for cur in linkedlist.iter(sections_ll[name]) do
-          cur = cur.next
-          while cur do
-            while cur do
-              if cur.data.type == UNTANGLED.SENTINEL then
-                break
-              end
-              cur = cur.next
-            end
+        local new_l 
+        if changed then
+          new_l = M.parse(line)
+        end
 
-            if not cur then break end
-            local l = cur.data.parsed
-            if l.linetype == LineType.TEXT then
-              local sentinel = cur
-              local line = ""
-              local changed = false
-              while cur do
-                if cur.data:is_newline() then
-                  cur = cur.next
-                  break
-                end
+        if new_l then
+          if new_l.linetype == LineType.SECTION then
+            local l = sentinel.data.parsed
+            if new_l.str ~= l.str then
+              sentinel.data.deleted = l.str
 
-                if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
-                  line = line .. cur.data.sym
-                end
-
-                if cur.data.deleted or cur.data.inserted then
-                  changed = true
-                end
-                cur = cur.next
-              end
-
-              local new_l 
-              if changed then
-                new_l = M.parse(line)
-              end
-
-
-              if new_l then
-                cur = sentinel
-                if new_l.linetype == LineType.TEXT then
-                  cur = cur.next
-                  while cur do
-                    if cur == start then
-                      local deleted = 0
-                      while cur do
-                        if not cur.data.deleted then
-                          break
-                        end
-                        deleted = deleted + 1
-                        cur = cur.next
-                      end
-
-                      local inserted = 0
-                      while cur do
-                        if not cur.data.inserted then
-                          break
-                        end
-                        inserted = inserted + 1
-                        cur = cur.next
-                      end
-
-                      table.insert(changes, { offset, deleted, inserted })
-
-                    end
-
-                    if cur.data.type == UNTANGLED.CHAR then
-                      if not cur.data.deleted then
-                        offset = offset + 1
-                      end
-                    elseif cur.data.type == UNTANGLED.SENTINEL then
-                      break
-                    end
-                    cur = cur.next
-                  end
-
-                elseif new_l.linetype == LineType.REFERENCE then
-                  local inserted_ref = {}
-                  local inserted = size_inserted(new_l.str, inserted_ref)
-
-                  cur = cur.next
-                  local len = 0
-                  while cur do
-                    if cur.data.type == UNTANGLED.CHAR and not cur.data.inserted then
-                      len = len + string.len(cur.data.sym)
-                    elseif cur.data.type == UNTANGLED.SENTINEL then
-                      break
-                    end
-                    cur = cur.next
-                  end
-
-                  table.insert(changes, { offset, len, inserted })
-
-                end
+              sentinel.data.inserted = new_l.str
+              if not sections_ll[new_l.str] then
+                sections_ll[new_l.str] = {}
+                local it = linkedlist.push_back(sections_ll[new_l.str], sentinel)
+                sentinel.data.new_section = it
               else
-                cur = sentinel
-                cur = cur.next
-                local len = 0
-                while cur do
-                  if cur.data.type == UNTANGLED.CHAR then
-                    len = len + string.len(cur.data.sym)
-                  elseif cur.data.type == UNTANGLED.SENTINEL then
-                    break
-                  end
-                  cur = cur.next
-                end
-
-                offset = offset + len
-              end
-
-            elseif l.linetype == LineType.REFERENCE then
-              local sentinel = cur
-              cur = cur.next
-              local line = ""
-              local changed = false
-              while cur do
-                if cur.data:is_newline() then
-                  cur = cur.next
-                  break
-                end
-
-                if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
-                  line = line .. cur.data.sym
-                end
-
-                if cur.data.deleted or cur.data.inserted then
-                  changed = true
-                end
-                cur = cur.next
-              end
-
-              local new_l 
-              if changed then
-                new_l = M.parse(line)
-              end
-
-
-              if new_l then
-                if new_l.linetype == LineType.TEXT then
-                  local deleted_ref = {}
-                  local deleted = size_deleted(l.str, deleted_ref)
-
-                  cur = sentinel
-                  cur = cur.next
-                  local len = 0
-                  while cur do
-                    if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
-                      len = len + string.len(cur.data.sym)
-                    elseif cur.data.type == UNTANGLED.SENTINEL then
-                      break
+                if new_l.op == "-=" then
+                  if front_sections[new_l.str] then
+                    local it = linkedlist.insert_before(sections_ll[new_l.str], front_sections[new_l.str], sentinel)
+                    sentinel.data.new_section = it
+                  else
+                    local added = false
+                    local part = sections_ll[new_l.str].head
+                    while part do
+                      local section_sentinel = part.data
+                      local l = section_sentinel.data.parsed
+                      if l.op == "+=" then
+                        local it = linkedlist.insert_before(sections_ll[new_l.str], part, sentinel)
+                        sentinel.data.new_section = it
+                        added = true
+                        break
+                      end
+                      part = part.next
                     end
-                    cur = cur.next
+
+                    if not added then
+                      local it = linkedlist.push_back(sections_ll[new_l.str], sentinel)
+                      sentinel.data.new_section = it
+                    end
+
                   end
-
-                  sentinel.data.new_parsed = new_l
-                  table.insert(reparsed, sentinel)
-
-                  table.insert(changes, { offset, deleted, len })
-
-                  offset = offset + len
-                elseif new_l.linetype == LineType.REFERENCE then
-                  local deleted_ref = {}
-                  local deleted = size_deleted(l.str, deleted_ref)
-
-                  local inserted_ref = {}
-                  local inserted = size_inserted(new_l.str, inserted_ref)
-
-                  table.insert(changes, { offset, deleted, inserted })
-
-                  l.str = new_ref
-                end
-              else
-                if dirty[l.str] then
-                  offset = scan_changes(l.str, offset, changes, start)
                 else
-                  if ref_sizes[l.str] then
-                    offset = offset + ref_sizes[l.str]
+                  if back_sections[new_l.str] then
+                    local it = linkedlist.insert_after(sections_ll[new_l.str], back_sections[new_l.str], sentinel)
+                    sentinel.data.new_section = it
+                  else
+                    local added = false
+                    local part = sections_ll[new_l.str].head
+                    while part do
+                      local section_sentinel = part.data
+                      local l = section_sentinel.data.parsed
+                      if l.op == "+=" then
+                        local it = linkedlist.insert_before(sections_ll[new_l.str], part, sentinel)
+                        sentinel.data.new_section = it
+                        added = true
+                        break
+                      end
+                      part = part.next
+                    end
+
+                    if not added then
+                      local it = linkedlist.push_back(sections_ll[new_l.str], sentinel)
+                      sentinel.data.new_section = it
+                    end
+
                   end
                 end
               end
 
-            elseif l.linetype == LineType.SECTION then
-              break
+              dirty[new_l.str] = true
+
             end
+            sentinel.data.new_parsed = new_l
+            table.insert(reparsed, sentinel)
 
           end
         end
-        return offset
       end
 
       for name, _ in pairs(roots) do
@@ -758,6 +979,20 @@ function M.attach()
         n.data.inserted = nil
       end
 
+      for cur, _ in pairs(modified_sections) do
+        local sentinel = cur
+        local l = sentinel.data.parsed
+        if l then
+          linkedlist.remove(sections_ll[l.str], sentinel.data.section)
+        end
+        if sentinel.data.new_section then
+          sentinel.data.section = sentinel.data.new_section
+        end
+        sentinel.data.deleted = nil
+        sentinel.data.inserted = nil
+      end
+      modified_sections = {}
+
       for _, n in ipairs(reparsed) do
         if n.data.new_parsed then
           n.data.parsed = n.data.new_parsed
@@ -776,6 +1011,7 @@ function M.attach()
         end
       end
 
+      dirty = {}
 
       vim.api.nvim_buf_clear_namespace(0, ns_debug, 0, -1)
 
@@ -813,6 +1049,7 @@ function M.attach()
             linetype = "SECTION"
           end
         end
+
         vim.api.nvim_buf_set_extmark(0, ns_debug, lnum, 0, {
           virt_text = {{line, "NonText"}, {"[" .. linetype .. "]", "WarningMsg"}}
         })

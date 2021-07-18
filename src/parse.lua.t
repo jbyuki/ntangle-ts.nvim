@@ -111,7 +111,7 @@ if op == "-=" then
 else
   it = linkedlist.push_back(sections_ll[name], sentinel)
 end
-sentinel.section = it
+sentinel.data.section = it
 
 @parse_variables+=
 local roots = {}

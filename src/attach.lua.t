@@ -23,15 +23,21 @@ function M.attach()
       start_row, start_col, start_byte, 
       old_row, old_col, old_byte, 
       new_row, new_col, new_byte)
+      local front_sections = {}
+      local back_sections = {}
       @search_start_range_character
+      local start_sentinel = sentinel
       @delete_characters
       @insert_characters
 
+      @readjust_sections
       @send_bytes_events
 
       @remove_deleted_and_inserted_chars
+      @remove_deleted_sections
       @put_new_parsed
       @recompute_section_sizes
+      dirty = {}
 
       @clear_virtual_text_namespace
       @show_line_as_virtual_text
@@ -316,6 +322,7 @@ while cur do
   elseif cur.data.type == UNTANGLED.SENTINEL then
     sentinel = cur
     @if_section_set_containing
+    @if_section_set_as_past
   end
   cur = cur.next
 end
@@ -326,10 +333,21 @@ if l.linetype == LineType.SECTION then
   section = l.str
 end
 
+@if_section_set_as_past+=
+if l.linetype == LineType.SECTION then
+  if l.op == "-=" then
+    front_sections[l.str] = sentinel
+  else
+    back_sections[l.str] = sentinel
+  end
+end
+
+@parse_variables+=
+local dirty = {}
+
 @delete_characters+=
 local start = cur
 
-local dirty = {}
 local to_delete = {}
 
 for i=1,old_byte do
@@ -338,6 +356,7 @@ for i=1,old_byte do
   end
   @mark_char_as_deleted
   @mark_all_containing_sections_as_dirty
+  @if_section_modified_save
   @go_to_next_char
 end
 
@@ -389,11 +408,13 @@ end
 
 @insert_characters+=
 local cur = start
+sentinel = start_sentinel
 local to_insert = {}
 @get_inserted_characters_from_buffer
 @skip_deleted_characters
 @check_start_pointer_position
 @mark_all_containing_sections_as_dirty
+@if_section_modified_save
 for i=1,new_byte do
   local c = string.sub(text, i, i)
   @insert_char_after
@@ -437,22 +458,26 @@ n.inserted = true
 cur = linkedlist.insert_after(content, cur, n)
 table.insert(to_insert, cur)
 
-@send_bytes_events+=
+@attach_functions+=
 local scan_changes
 scan_changes = function(name, offset, changes, start)
   if not sections_ll[name] then
-    return
+    return offset
   end
 
   for cur in linkedlist.iter(sections_ll[name]) do
+    local sec = cur
     cur = cur.next
-    while cur do
-      @go_to_next_sentinel
-      if not cur then break end
-      local l = cur.data.parsed
-      @if_text_scan_line
-      @if_reference_recurse_if_dirty
-      @if_section_break
+    @check_if_section_changed
+    if not skip_part then
+      while cur do
+        @go_to_next_sentinel
+        if not cur then break end
+        local l = cur.data.parsed
+        @if_text_scan_line
+        @if_reference_recurse_if_dirty
+        @if_section_break
+      end
     end
   end
   return offset
@@ -570,7 +595,7 @@ if changed then
   new_l = M.parse(line)
 end
 
-@send_bytes_events-=
+@parse_variables+=
 local reparsed = {}
 
 @append_to_reparsed+=
@@ -702,6 +727,65 @@ local inserted = size_inserted(new_l.str, inserted_ref)
 @add_reference_changes+=
 table.insert(changes, { offset, deleted, inserted })
 
+@check_if_section_changed+=
+local skip_part = false
+if sec.data.deleted == name then
+  @compute_section_part_size_deleted
+  @add_deleted_section_part_changes
+  skip_part = true
+elseif sec.data.inserted == name then
+  @compute_section_part_size_inserted
+  @add_inserted_section_part_changes
+  offset = offset + size
+  skip_part = true
+end
+
+@compute_section_part_size_deleted+=
+local size = 0
+local cur = sec
+cur = cur.next
+local inserted_ref = {}
+while cur do
+  @go_to_next_sentinel
+  if not cur then break end
+  local l = cur.data.parsed
+
+  if l.linetype == LineType.TEXT then
+    @count_chars_until_next_sentinel_not_deleted
+    size = size + len
+  elseif l.linetype == LineType.REFERENCE then
+    size = size + size_inserted(l.str, inserted_ref)
+  @if_section_break
+end
+
+@add_deleted_section_part_changes+=
+if size > 0 then
+  table.insert(changes, { offset, size, 0 })
+end
+
+@compute_section_part_size_inserted+=
+local size = 0
+local cur = sec
+cur = cur.next
+local inserted_ref = {}
+while cur do
+  @go_to_next_sentinel
+  if not cur then break end
+  local l = cur.data.parsed
+
+  if l.linetype == LineType.TEXT then
+    @count_chars_until_next_sentinel_not_deleted
+    size = size + len
+  elseif l.linetype == LineType.REFERENCE then
+    size = size + size_inserted(l.str, inserted_ref)
+  @if_section_break
+end
+
+@add_inserted_section_part_changes+=
+if size > 0 then
+  table.insert(changes, { offset, 0, size })
+end
+
 @remove_deleted_and_inserted_chars+=
 for _, n in ipairs(to_delete) do
   linkedlist.remove(content, n)
@@ -757,3 +841,100 @@ if l then
     linetype = "SECTION"
   end
 end
+
+@parse_variables+=
+local modified_sections = {}
+
+@if_section_modified_save+=
+if sentinel.data.parsed then
+  local l = sentinel.data.parsed
+  if l.linetype == LineType.SECTION then
+    modified_sections[sentinel] = true
+  end
+end
+
+@readjust_sections+=
+for cur, _ in pairs(modified_sections) do
+  local sentinel = cur
+  @collect_letter_on_line
+  @reparse_if_changed
+  if new_l then
+    if new_l.linetype == LineType.SECTION then
+      local l = sentinel.data.parsed
+      if new_l.str ~= l.str then
+        @mark_removed_from_old_sections_ll
+        @append_to_new_sections_ll
+        @put_new_section_in_dirty
+      end
+      @append_to_reparsed
+    end
+  end
+end
+
+@mark_removed_from_old_sections_ll+=
+sentinel.data.deleted = l.str
+
+@append_to_new_sections_ll+=
+sentinel.data.inserted = new_l.str
+if not sections_ll[new_l.str] then
+  sections_ll[new_l.str] = {}
+  local it = linkedlist.push_back(sections_ll[new_l.str], sentinel)
+  sentinel.data.new_section = it
+else
+  if new_l.op == "-=" then
+    if front_sections[new_l.str] then
+      local it = linkedlist.insert_before(sections_ll[new_l.str], front_sections[new_l.str], sentinel)
+      sentinel.data.new_section = it
+    else
+      @skip_all_push_front_and_insert_after
+    end
+  else
+    if back_sections[new_l.str] then
+      local it = linkedlist.insert_after(sections_ll[new_l.str], back_sections[new_l.str], sentinel)
+      sentinel.data.new_section = it
+    else
+      @skip_all_push_front_and_insert_after
+    end
+  end
+end
+
+@skip_all_push_front_and_insert_after+=
+local added = false
+local part = sections_ll[new_l.str].head
+while part do
+  local section_sentinel = part.data
+  local l = section_sentinel.data.parsed
+  if l.op == "+=" then
+    local it = linkedlist.insert_before(sections_ll[new_l.str], part, sentinel)
+    sentinel.data.new_section = it
+    added = true
+    break
+  end
+  part = part.next
+end
+
+if not added then
+  local it = linkedlist.push_back(sections_ll[new_l.str], sentinel)
+  sentinel.data.new_section = it
+end
+
+@put_new_section_in_dirty+=
+dirty[new_l.str] = true
+
+@remove_deleted_sections+=
+for cur, _ in pairs(modified_sections) do
+  local sentinel = cur
+  @remove_from_old_section_list
+end
+modified_sections = {}
+
+@remove_from_old_section_list+=
+local l = sentinel.data.parsed
+if l then
+  linkedlist.remove(sections_ll[l.str], sentinel.data.section)
+end
+if sentinel.data.new_section then
+  sentinel.data.section = sentinel.data.new_section
+end
+sentinel.data.deleted = nil
+sentinel.data.inserted = nil

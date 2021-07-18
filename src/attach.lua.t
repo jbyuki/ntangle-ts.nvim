@@ -478,8 +478,14 @@ if l.linetype == LineType.TEXT then
     if new_l.linetype == LineType.TEXT then
       @scan_for_changes_in_text
     elseif new_l.linetype == LineType.REFERENCE then
-      @transform_text_to_reference
+      @count_inserted_reference_content
+      @count_chars_until_next_sentinel_not_inserted
+      @add_text_to_reference_change
     end
+  else
+    cur = sentinel
+    @count_chars_until_next_sentinel
+    offset = offset + len
   end
 
 @scan_for_changes_in_text+=
@@ -488,7 +494,7 @@ while cur do
   if cur == start then
     @count_deleted_characters
     @count_inserted_characters
-    @append_change
+    @append_change_text
   end
 
   if cur.data.type == UNTANGLED.CHAR then
@@ -521,8 +527,11 @@ while cur do
   cur = cur.next
 end
 
-@append_change+=
+@append_change_text+=
 table.insert(changes, { offset, deleted, inserted })
+
+@add_text_to_reference_change+=
+table.insert(changes, { offset, len, inserted })
 
 @if_reference_recurse_if_dirty+=
 elseif l.linetype == LineType.REFERENCE then
@@ -540,20 +549,17 @@ elseif l.linetype == LineType.REFERENCE then
       @add_reference_to_text_changes
       offset = offset + len
     elseif new_l.linetype == LineType.REFERENCE then
-      local new_ref = line:sub(2)
-      if l.str ~= new_ref then
-        @count_deleted_reference_content
-        @count_inserted_reference_content
-        @add_reference_changes
-        l.str = new_ref
-      else
-        if dirty[l.str] then
-          offset = scan_changes(l.str, offset, changes, start)
-        else
-          if ref_sizes[l.str] then
-            offset = offset + ref_sizes[l.str]
-          end
-        end
+      @count_deleted_reference_content
+      @count_inserted_reference_content
+      @add_reference_changes
+      l.str = new_ref
+    end
+  else
+    if dirty[l.str] then
+      offset = scan_changes(l.str, offset, changes, start)
+    else
+      if ref_sizes[l.str] then
+        offset = offset + ref_sizes[l.str]
       end
     end
   end
@@ -691,7 +697,7 @@ elseif l.linetype == LineType.REFERENCE then
 
 @count_inserted_reference_content+=
 local inserted_ref = {}
-local inserted = size_inserted(new_ref, inserted_ref)
+local inserted = size_inserted(new_l.str, inserted_ref)
 
 @add_reference_changes+=
 table.insert(changes, { offset, deleted, inserted })

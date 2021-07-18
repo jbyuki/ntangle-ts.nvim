@@ -628,7 +628,37 @@ function M.attach()
                   end
 
                 elseif new_l.linetype == LineType.REFERENCE then
+                  local inserted_ref = {}
+                  local inserted = size_inserted(new_l.str, inserted_ref)
+
+                  cur = cur.next
+                  local len = 0
+                  while cur do
+                    if cur.data.type == UNTANGLED.CHAR and not cur.data.inserted then
+                      len = len + string.len(cur.data.sym)
+                    elseif cur.data.type == UNTANGLED.SENTINEL then
+                      break
+                    end
+                    cur = cur.next
+                  end
+
+                  table.insert(changes, { offset, len, inserted })
+
                 end
+              else
+                cur = sentinel
+                cur = cur.next
+                local len = 0
+                while cur do
+                  if cur.data.type == UNTANGLED.CHAR then
+                    len = len + string.len(cur.data.sym)
+                  elseif cur.data.type == UNTANGLED.SENTINEL then
+                    break
+                  end
+                  cur = cur.next
+                end
+
+                offset = offset + len
               end
 
             elseif l.linetype == LineType.REFERENCE then
@@ -682,25 +712,22 @@ function M.attach()
 
                   offset = offset + len
                 elseif new_l.linetype == LineType.REFERENCE then
-                  local new_ref = line:sub(2)
-                  if l.str ~= new_ref then
-                    local deleted_ref = {}
-                    local deleted = size_deleted(l.str, deleted_ref)
+                  local deleted_ref = {}
+                  local deleted = size_deleted(l.str, deleted_ref)
 
-                    local inserted_ref = {}
-                    local inserted = size_inserted(new_ref, inserted_ref)
+                  local inserted_ref = {}
+                  local inserted = size_inserted(new_l.str, inserted_ref)
 
-                    table.insert(changes, { offset, deleted, inserted })
+                  table.insert(changes, { offset, deleted, inserted })
 
-                    l.str = new_ref
-                  else
-                    if dirty[l.str] then
-                      offset = scan_changes(l.str, offset, changes, start)
-                    else
-                      if ref_sizes[l.str] then
-                        offset = offset + ref_sizes[l.str]
-                      end
-                    end
+                  l.str = new_ref
+                end
+              else
+                if dirty[l.str] then
+                  offset = scan_changes(l.str, offset, changes, start)
+                else
+                  if ref_sizes[l.str] then
+                    offset = offset + ref_sizes[l.str]
                   end
                 end
               end

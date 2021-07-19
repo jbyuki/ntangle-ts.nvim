@@ -21,7 +21,7 @@ byte range transformation to line transformation.
 * [x] Modify text line -> reference line
 * [x] Modify section line
 * [x] Modify section line -> text line
-* [ ] Modify section line -> reference line
+* [x] Modify section line -> reference line
 * [ ] Modify text line -> section line
 * [ ] Modify reference line -> section line
 * [ ] Mitigate circular references

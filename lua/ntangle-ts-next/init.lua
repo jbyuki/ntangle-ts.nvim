@@ -622,7 +622,8 @@ function M.attach()
           elseif l.linetype == LineType.SECTION then
             if cur.data.deleted and not cur.data.inserted then
               local new_l = cur.data.new_parsed
-              local size = size_inserted_from(cur)
+              local inserted_ref = {}
+              local size = size_inserted_from(cur, inserted_ref)
               if size > 0 then
                 table.insert(changes, { offset, 0, size })
                 offset = offset + size
@@ -638,7 +639,7 @@ function M.attach()
     return offset
   end
 
-  size_inserted_from = function(cur)
+  size_inserted_from = function(cur, inserted_ref)
     local size = 0
     while cur do
       while cur do
@@ -666,7 +667,8 @@ function M.attach()
         size = size + len
 
       elseif l.linetype == LineType.REFERENCE then
-        local len = size_inserted(l.str)
+        local inserted_ref = {}
+        local len = size_inserted(l.str, inserted_ref)
         size = size + len
         cur = cur.next
 
@@ -741,8 +743,10 @@ function M.attach()
     
     local size = 0
     for cur in linkedlist.iter(sections_ll[name]) do
-      cur = cur.next
-      size = size + size_inserted_from(cur)
+      if not cur.data.deleted or cur.data.deleted ~= name then
+        cur = cur.next
+        size = size + size_inserted_from(cur, inserted_ref)
+      end
     end
     inserted_ref[name] = size
     return size
@@ -981,6 +985,18 @@ function M.attach()
             table.insert(reparsed, sentinel)
 
           elseif new_l.linetype == LineType.TEXT then
+            local l = sentinel.data.parsed
+            sentinel.data.deleted = l.str
+
+            if prev_section then
+              local l = prev_section.data.parsed
+              dirty[l.str] = true
+            end
+
+            sentinel.data.new_parsed = new_l
+            table.insert(reparsed, sentinel)
+
+          elseif new_l.linetype == LineType.REFERENCE then
             local l = sentinel.data.parsed
             sentinel.data.deleted = l.str
 

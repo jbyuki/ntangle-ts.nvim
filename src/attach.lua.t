@@ -621,7 +621,7 @@ table.insert(changes, { offset, deleted, len })
 local size_inserted_from
 
 @attach_functions+=
-size_inserted_from = function(cur)
+size_inserted_from = function(cur, inserted_ref)
   local size = 0
   while cur do
     @go_to_next_sentinel
@@ -638,7 +638,8 @@ end
 elseif l.linetype == LineType.SECTION then
   if cur.data.deleted and not cur.data.inserted then
     local new_l = cur.data.new_parsed
-    local size = size_inserted_from(cur)
+    local inserted_ref = {}
+    local size = size_inserted_from(cur, inserted_ref)
     @add_changes_newly_added_part
   end
   break
@@ -722,8 +723,10 @@ size_inserted = function(name, inserted_ref)
   
   local size = 0
   for cur in linkedlist.iter(sections_ll[name]) do
-    cur = cur.next
-    size = size + size_inserted_from(cur)
+    if not cur.data.deleted or cur.data.deleted ~= name then
+      cur = cur.next
+      size = size + size_inserted_from(cur, inserted_ref)
+    end
   end
   inserted_ref[name] = size
   return size
@@ -749,7 +752,8 @@ end
 
 @if_reference_recursve_and_add_inserted+=
 elseif l.linetype == LineType.REFERENCE then
-  local len = size_inserted(l.str)
+  local inserted_ref = {}
+  local len = size_inserted(l.str, inserted_ref)
   size = size + len
   cur = cur.next
 
@@ -901,6 +905,11 @@ for cur, _ in pairs(modified_sections) do
       end
       @append_to_reparsed
     elseif new_l.linetype == LineType.TEXT then
+      local l = sentinel.data.parsed
+      @mark_removed_from_old_sections_ll
+      @mark_prev_section_as_dirty
+      @append_to_reparsed
+    elseif new_l.linetype == LineType.REFERENCE then
       local l = sentinel.data.parsed
       @mark_removed_from_old_sections_ll
       @mark_prev_section_as_dirty

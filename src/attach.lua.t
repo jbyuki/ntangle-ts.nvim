@@ -44,6 +44,11 @@ function M.attach()
 
       @clear_virtual_text_namespace
       @show_line_as_virtual_text
+
+      @apply_changes_to_playground
+      vim.schedule(function()
+        @refresh_playground_text
+      end)
     end
   })
 end
@@ -185,6 +190,8 @@ end
 for name, _ in pairs(roots) do
   local lines = {}
   generate(name, lines)
+  @create_playground
+  @display_generated_into_playground
   -- @display_generated_lines
 end
 
@@ -504,13 +511,13 @@ scan_changes = function(name, offset, changes)
 end
 
 @send_bytes_events+=
+local changes = {}
 for name, _ in pairs(roots) do
   if dirty[name] then
-    local changes = {}
     scan_changes(name, 0, changes)
-    print("changes", vim.inspect(changes))
   end
 end
+print("changes", vim.inspect(changes))
 
 @if_text_scan_line+=
 if l.linetype == LineType.TEXT then
@@ -784,7 +791,6 @@ end
 @if_text_add_to_size_not_deleted+=
 if l.linetype == LineType.TEXT then
   @collect_chars_not_deleted
-  -- cur.data.len = len
   content = content .. inserted
 
 @collect_chars_not_deleted+=

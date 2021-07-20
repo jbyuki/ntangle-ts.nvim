@@ -23,6 +23,9 @@ local LineType = {
 
 }
 
+local playground_text = ""
+local playground_buf
+
 local M = {}
 function M.attach()
   local lines = vim.api.nvim_buf_get_lines(0, 0, -1, true)
@@ -284,6 +287,16 @@ function M.attach()
   for name, _ in pairs(roots) do
     local lines = {}
     generate(name, lines)
+    local old_win = vim.api.nvim_get_current_win()
+    vim.cmd [[sp]]
+
+    playground_buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_set_current_buf(playground_buf)
+    vim.api.nvim_set_current_win(old_win)
+
+    playground_text = table.concat(lines, "\n")
+    vim.api.nvim_buf_set_lines(playground_buf, 0, -1, true, lines)
+
     -- @display_generated_lines
   end
 
@@ -668,7 +681,6 @@ function M.attach()
           cur = cur.next
         end
 
-        -- cur.data.len = len
         content = content .. inserted
 
       elseif l.linetype == LineType.REFERENCE then
@@ -1105,13 +1117,13 @@ function M.attach()
         end
       end
 
+      local changes = {}
       for name, _ in pairs(roots) do
         if dirty[name] then
-          local changes = {}
           scan_changes(name, 0, changes)
-          print("changes", vim.inspect(changes))
         end
       end
+      print("changes", vim.inspect(changes))
 
 
       for _, n in ipairs(to_delete) do
@@ -1201,6 +1213,20 @@ function M.attach()
         lnum = lnum + 1
       end
 
+
+      for _, change in ipairs(changes) do
+        local off, del, ins, ins_text = unpack(change)
+        ins_text = ins_text or ""
+        local s1 = playground_text:sub(1, off)
+        local s2 = playground_text:sub(off+del+1)
+        playground_text = s1 .. ins_text .. s2
+
+      end
+
+      vim.schedule(function()
+        local lines = vim.split(playground_text, "\n")
+        vim.api.nvim_buf_set_lines(playground_buf, 0, -1, true, lines)
+      end)
     end
   })
 end

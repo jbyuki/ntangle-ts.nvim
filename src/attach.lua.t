@@ -702,7 +702,7 @@ size_deleted = function(name, deleted_ref)
   local size = 0
   for cur in linkedlist.iter(sections_ll[name]) do
     cur = cur.next
-    local size = size_deleted_from(cur, deleted_ref)
+    size = size + size_deleted_from(cur, deleted_ref)
   end
   deleted_ref[name] = size
   return size

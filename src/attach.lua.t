@@ -632,6 +632,11 @@ elseif l.linetype == LineType.REFERENCE then
       @add_reference_changes
       @update_reference_deps_from_reference
       l.str = new_ref
+    elseif new_l.linetype == LineType.SECTION then
+      @count_deleted_reference_content
+      @add_reference_to_section_changes
+      @update_reference_deps_from_reference
+      break
     end
   else
     if dirty[l.str] then
@@ -817,6 +822,9 @@ deps[new_l.str] = deps[new_l.str] or {}
 deps[new_l.str][name] = deps[new_l.str][name] or 0
 deps[new_l.str][name] = deps[new_l.str][name] + 1
 
+@add_reference_to_section_changes+=
+table.insert(changes, { offset, deleted, 0 })
+
 @check_if_section_changed+=
 local skip_part = false
 if sec.data.deleted == name then
@@ -939,6 +947,11 @@ for cur, _ in pairs(reparsed) do
         @mark_prev_section_as_dirty
       end
     elseif l.linetype == LineType.TEXT then
+      if new_l.linetype == LineType.SECTION then
+        @append_to_new_sections_ll
+        @put_new_section_in_dirty
+      end
+    elseif  l.linetype == LineType.REFERENCE then
       if new_l.linetype == LineType.SECTION then
         @append_to_new_sections_ll
         @put_new_section_in_dirty

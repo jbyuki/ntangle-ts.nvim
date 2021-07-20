@@ -34,7 +34,7 @@ byte range transformation to line transformation.
 
 ## Notes
 
-### #1
+<details><summary>#1</summary>
 
 Let the following code
 ```
@@ -65,3 +65,4 @@ bb
 ### Solution to #1
 
 Append a virtual character `\n` at the end.
+</details>

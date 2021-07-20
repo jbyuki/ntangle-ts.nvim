@@ -54,9 +54,9 @@ function M.attach()
   end
 
   while cur do
-    if cur.data:is_newline() then
+    if cur.data:is_newline() and cur.next then
       local d = untangled.new("SENTINEL")
-      linkedlist.insert_after(content, cur, d)
+      cur = linkedlist.insert_after(content, cur, d)
 
     end
 
@@ -376,14 +376,9 @@ function M.attach()
 
                 table.insert(changes, { offset, len, string.len(inserted), inserted })
 
-                deps[new_l.str] = deps[new_l.str] or {}
-                deps[new_l.str][name] = deps[new_l.str][name] or 0
-                deps[new_l.str][name] = deps[new_l.str][name] + 1
-
               elseif new_l.linetype == LineType.SECTION then
                 local deleted_ref = {}
                 local len = size_deleted_from(sentinel, deleted_ref)
-
 
                 table.insert(changes, { offset, len, 0 })
 
@@ -442,9 +437,9 @@ function M.attach()
                 l.str = new_ref
               elseif new_l.linetype == LineType.SECTION then
                 local deleted_ref = {}
-                local deleted = size_deleted(l.str, deleted_ref)
+                local len = size_deleted_from(sentinel, deleted_ref)
 
-                table.insert(changes, { offset, deleted, 0 })
+                table.insert(changes, { offset, len, 0 })
 
                 break
               end
@@ -962,7 +957,8 @@ function M.attach()
       for cur, _ in pairs(reparsed) do
         local sentinel = cur
         local l = sentinel.data.parsed
-        if l.linetype == LineType.SECTION then
+        local new_l = sentinel.data.new_parsed
+        if l.linetype == LineType.SECTION or new_l.linetype == LineType.SECTION then
           if sentinel.data.deleted then
             linkedlist.remove(sections_ll[sentinel.data.deleted], sentinel.data.section)
           end

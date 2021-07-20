@@ -115,13 +115,13 @@ function untangled:is_newline()
 end
 
 @insert_sentinel_after_newline+=
-if cur.data:is_newline() then
+if cur.data:is_newline() and cur.next then
   @insert_sentinel_after
 end
 
 @insert_sentinel_after+=
 local d = untangled.new("SENTINEL")
-linkedlist.insert_after(content, cur, d)
+cur = linkedlist.insert_after(content, cur, d)
 
 @parse_line_and_save_in_sentinel+=
 local cur = content.head
@@ -421,7 +421,6 @@ if l.linetype == LineType.TEXT then
       @count_inserted_reference_content
       @count_chars_until_next_sentinel_not_inserted
       @add_text_to_reference_change
-      @update_reference_dependencies_text
     elseif new_l.linetype == LineType.SECTION then
       @count_deleted_characters_remaining
       @add_text_to_section_change
@@ -453,7 +452,6 @@ end
 @count_deleted_characters_remaining+=
 local deleted_ref = {}
 local len = size_deleted_from(sentinel, deleted_ref)
-
 
 @scan_for_changes_in_text+=
 cur = cur.next
@@ -501,11 +499,6 @@ table.insert(changes, { offset, deleted, string.len(inserted), inserted })
 @add_text_to_reference_change+=
 table.insert(changes, { offset, len, string.len(inserted), inserted })
 
-@update_reference_dependencies_text+=
-deps[new_l.str] = deps[new_l.str] or {}
-deps[new_l.str][name] = deps[new_l.str][name] or 0
-deps[new_l.str][name] = deps[new_l.str][name] + 1
-
 @add_text_to_section_change+=
 table.insert(changes, { offset, len, 0 })
 
@@ -528,7 +521,7 @@ elseif l.linetype == LineType.REFERENCE then
       @add_reference_changes
       l.str = new_ref
     elseif new_l.linetype == LineType.SECTION then
-      @count_deleted_reference_content
+      @count_deleted_characters_remaining
       @add_reference_to_section_changes
       break
     end
@@ -706,7 +699,7 @@ local inserted = size_inserted(new_l.str, inserted_ref)
 table.insert(changes, { offset, deleted, string.len(inserted), inserted })
 
 @add_reference_to_section_changes+=
-table.insert(changes, { offset, deleted, 0 })
+table.insert(changes, { offset, len, 0 })
 
 @check_if_section_changed+=
 local skip_part = false
@@ -878,7 +871,8 @@ end
 for cur, _ in pairs(reparsed) do
   local sentinel = cur
   local l = sentinel.data.parsed
-  if l.linetype == LineType.SECTION then
+  local new_l = sentinel.data.new_parsed
+  if l.linetype == LineType.SECTION or new_l.linetype == LineType.SECTION then
     @remove_from_old_section_list
   end
 end

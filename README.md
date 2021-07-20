@@ -28,4 +28,5 @@ byte range transformation to line transformation.
 * [ ] Add/Remove root sections
 * [ ] Handle tabs
 * [ ] Mitigate circular references
+* [ ] row, col for modifications
 ...

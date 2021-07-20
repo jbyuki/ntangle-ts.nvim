@@ -574,6 +574,7 @@ while cur do
     if cur.data.deleted or cur.data.inserted then
       @scan_text_modified_range
       @add_text_to_text_changes
+      offset = offset + string.len(inserted)
       if cur.data.type == UNTANGLED.SENTINEL then
         break
       end

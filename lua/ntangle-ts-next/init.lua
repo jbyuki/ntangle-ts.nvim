@@ -461,6 +461,7 @@ function M.attach()
 
                       table.insert(changes, { offset, deleted, string.len(inserted), inserted })
 
+                      offset = offset + string.len(inserted)
                       if cur.data.type == UNTANGLED.SENTINEL then
                         break
                       end

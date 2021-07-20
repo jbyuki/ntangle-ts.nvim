@@ -54,10 +54,12 @@ output:
 aaaaabb
 ```
 
+The last line doesn't contain a newline character.
 But the following is expected:
 
 ```
-aaaaabb
+aaaaa
+bb
 ```
 
 ### Solution to #1

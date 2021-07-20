@@ -785,7 +785,6 @@ end
 if l.linetype == LineType.TEXT then
   @collect_chars_not_deleted
   -- cur.data.len = len
-  size = size + string.len(inserted)
   content = content .. inserted
 
 @collect_chars_not_deleted+=

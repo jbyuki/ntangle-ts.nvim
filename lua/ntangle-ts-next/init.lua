@@ -669,7 +669,6 @@ function M.attach()
         end
 
         -- cur.data.len = len
-        size = size + string.len(inserted)
         content = content .. inserted
 
       elseif l.linetype == LineType.REFERENCE then

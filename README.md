@@ -24,5 +24,8 @@ byte range transformation to line transformation.
 * [x] Modify section line -> reference line
 * [x] Modify text line -> section line
 * [x] Modify reference line -> section line
+* [ ] Get inserted text
+* [ ] Add/Remove root sections
+* [ ] Handle tabs
 * [ ] Mitigate circular references
 ...

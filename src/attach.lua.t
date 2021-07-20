@@ -480,7 +480,7 @@ dirty[new_l.str] = true
 
 @attach_functions+=
 local scan_changes
-scan_changes = function(name, offset, changes, start)
+scan_changes = function(name, offset, changes)
   if not sections_ll[name] then
     return offset
   end
@@ -507,7 +507,7 @@ end
 for name, _ in pairs(roots) do
   if dirty[name] then
     local changes = {}
-    scan_changes(name, 0, changes, start)
+    scan_changes(name, 0, changes)
     print("changes", vim.inspect(changes))
   end
 end
@@ -559,18 +559,39 @@ end
 local deleted_ref = {}
 local len = size_deleted_from(sentinel, deleted_ref)
 
+
 @scan_for_changes_in_text+=
 cur = cur.next
 while cur do
-  if cur == start then
-    @count_deleted_characters
-    @count_inserted_characters
-    @append_change_text
-  end
-
   if cur.data.type == UNTANGLED.CHAR then
-    if not cur.data.deleted then
-      offset = offset + 1
+    if cur.data.deleted or cur.data.inserted then
+      @scan_text_modified_range
+      @add_text_to_text_changes
+      if cur.data.type == UNTANGLED.SENTINEL then
+        break
+      end
+    else
+      if not cur.data.deleted then
+        offset = offset + 1
+      end
+      cur = cur.next
+    end
+  elseif cur.data.type == UNTANGLED.SENTINEL then
+    break
+  end
+end
+
+@scan_text_modified_range+=
+local inserted = ""
+local deleted = 0
+while cur do
+  if cur.data.type == UNTANGLED.CHAR then
+    if cur.data.deleted then
+      deleted = deleted + 1
+    elseif cur.data.inserted then
+      inserted = inserted .. cur.data.sym
+    else
+      break
     end
   elseif cur.data.type == UNTANGLED.SENTINEL then
     break
@@ -578,28 +599,8 @@ while cur do
   cur = cur.next
 end
 
-@count_deleted_characters+=
-local deleted = 0
-while cur do
-  if not cur.data.deleted then
-    break
-  end
-  deleted = deleted + 1
-  cur = cur.next
-end
-
-@count_inserted_characters+=
-local inserted = 0
-while cur do
-  if not cur.data.inserted then
-    break
-  end
-  inserted = inserted + 1
-  cur = cur.next
-end
-
-@append_change_text+=
-table.insert(changes, { offset, deleted, inserted })
+@add_text_to_text_changes+=
+table.insert(changes, { offset, deleted, string.len(inserted), inserted })
 
 @add_text_to_reference_change+=
 table.insert(changes, { offset, len, inserted })
@@ -625,7 +626,7 @@ elseif l.linetype == LineType.REFERENCE then
       @count_chars_until_next_sentinel_not_deleted
       @add_reference_to_text_changes
       @update_reference_deps_from_text
-      offset = offset + len
+      offset = offset + string.len(inserted)
     elseif new_l.linetype == LineType.REFERENCE then
       @count_deleted_reference_content
       @count_inserted_reference_content
@@ -640,7 +641,7 @@ elseif l.linetype == LineType.REFERENCE then
     end
   else
     if dirty[l.str] then
-      offset = scan_changes(l.str, offset, changes, start)
+      offset = scan_changes(l.str, offset, changes)
     else
       if ref_sizes[l.str] then
         offset = offset + ref_sizes[l.str]
@@ -664,7 +665,7 @@ end
 reparsed = {}
 
 @add_reference_to_text_changes+=
-table.insert(changes, { offset, deleted, len })
+table.insert(changes, { offset, deleted, string.len(inserted), inserted })
 
 @update_reference_deps_from_text+=
 deps[l.str][name] = deps[l.str][name] - 1
@@ -677,7 +678,7 @@ local size_inserted_from
 
 @attach_functions+=
 size_inserted_from = function(cur, inserted_ref)
-  local size = 0
+  local content = ""
   while cur do
     @go_to_next_sentinel
     if not cur then break end
@@ -686,7 +687,7 @@ size_inserted_from = function(cur, inserted_ref)
     @if_reference_recursve_and_add_inserted
     @if_section_break
   end
-  return size
+  return content
 end
 
 @if_section_break_and_add_rest_if_deleted+=
@@ -694,15 +695,15 @@ elseif l.linetype == LineType.SECTION then
   if cur.data.deleted and not cur.data.inserted then
     local new_l = cur.data.new_parsed
     local inserted_ref = {}
-    local size = size_inserted_from(cur, inserted_ref)
+    local inserted = size_inserted_from(cur, inserted_ref)
     @add_changes_newly_added_part
   end
   break
 end
 
 @add_changes_newly_added_part+=
-if size > 0 then
-  table.insert(changes, { offset, 0, size })
+if string.len(inserted) > 0 then
+  table.insert(changes, { offset, 0, string.len(inserted), inserted })
   offset = offset + size
 end
 
@@ -762,36 +763,49 @@ local size_inserted
 @attach_functions+=
 size_inserted = function(name, inserted_ref) 
   if not sections_ll[name] then
-    return 0
+    return ""
   end
 
   if inserted_ref[name] then
     return inserted_ref[name]
   end
   
-  local size = 0
+  local content = ""
   for cur in linkedlist.iter(sections_ll[name]) do
     if not cur.data.deleted or cur.data.deleted ~= name then
       cur = cur.next
-      size = size + size_inserted_from(cur, inserted_ref)
+      content = content .. size_inserted_from(cur, inserted_ref)
     end
   end
-  inserted_ref[name] = size
-  return size
+  inserted_ref[name] = content
+  return content
 end
 
 @if_text_add_to_size_not_deleted+=
 if l.linetype == LineType.TEXT then
-  @count_chars_until_next_sentinel_not_deleted
+  @collect_chars_not_deleted
   -- cur.data.len = len
-  size = size + len
+  size = size + string.len(inserted)
+  content = content .. inserted
+
+@collect_chars_not_deleted+=
+cur = cur.next
+local inserted = ""
+while cur do
+  if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
+    inserted = inserted .. cur.data.sym
+  elseif cur.data.type == UNTANGLED.SENTINEL then
+    break
+  end
+  cur = cur.next
+end
 
 @count_chars_until_next_sentinel_not_deleted+=
 cur = cur.next
-local len = 0
+local inserted = ""
 while cur do
   if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
-    len = len + string.len(cur.data.sym)
+    inserted = inserted .. cur.data.sym
   elseif cur.data.type == UNTANGLED.SENTINEL then
     break
   end
@@ -801,8 +815,8 @@ end
 @if_reference_recursve_and_add_inserted+=
 elseif l.linetype == LineType.REFERENCE then
   local inserted_ref = {}
-  local len = size_inserted(l.str, inserted_ref)
-  size = size + len
+  local inserted = size_inserted(l.str, inserted_ref)
+  content = content .. inserted
   cur = cur.next
 
 @count_inserted_reference_content+=
@@ -850,7 +864,7 @@ while cur do
 
   if l.linetype == LineType.TEXT then
     @count_chars_until_next_sentinel_not_deleted
-    size = size + len
+    size = size + string.len(inserted)
   elseif l.linetype == LineType.REFERENCE then
     size = size + size_inserted(l.str, inserted_ref)
   @if_section_break
@@ -864,11 +878,11 @@ end
 @compute_section_part_size_inserted+=
 cur = cur.next
 local inserted_ref = {}
-local size = size_inserted_from(cur, inserted_ref)
+local inserted = size_inserted_from(cur, inserted_ref)
 
 @add_inserted_section_part_changes+=
-if size > 0 then
-  table.insert(changes, { offset, 0, size })
+if string.len(inserted) > 0 then
+  table.insert(changes, { offset, 0, string.len(inserted), inserted })
 end
 
 @remove_deleted_and_inserted_chars+=

@@ -342,7 +342,7 @@ function M.attach()
   local size_deleted_from
 
   local scan_changes
-  scan_changes = function(name, offset, changes, start)
+  scan_changes = function(name, offset, changes)
     if not sections_ll[name] then
       return offset
     end
@@ -369,17 +369,17 @@ function M.attach()
 
           if l.linetype == LineType.TEXT then
             cur = cur.next
-            local len = 0
+            local inserted = ""
             while cur do
               if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
-                len = len + string.len(cur.data.sym)
+                inserted = inserted .. cur.data.sym
               elseif cur.data.type == UNTANGLED.SENTINEL then
                 break
               end
               cur = cur.next
             end
 
-            size = size + len
+            size = size + string.len(inserted)
           elseif l.linetype == LineType.REFERENCE then
             size = size + size_inserted(l.str, inserted_ref)
           elseif l.linetype == LineType.SECTION then
@@ -396,10 +396,10 @@ function M.attach()
       elseif sec.data.inserted == name then
         cur = cur.next
         local inserted_ref = {}
-        local size = size_inserted_from(cur, inserted_ref)
+        local inserted = size_inserted_from(cur, inserted_ref)
 
-        if size > 0 then
-          table.insert(changes, { offset, 0, size })
+        if string.len(inserted) > 0 then
+          table.insert(changes, { offset, 0, string.len(inserted), inserted })
         end
 
         offset = offset + size
@@ -427,37 +427,39 @@ function M.attach()
               if new_l.linetype == LineType.TEXT then
                 cur = cur.next
                 while cur do
-                  if cur == start then
-                    local deleted = 0
-                    while cur do
-                      if not cur.data.deleted then
-                        break
-                      end
-                      deleted = deleted + 1
-                      cur = cur.next
-                    end
-
-                    local inserted = 0
-                    while cur do
-                      if not cur.data.inserted then
-                        break
-                      end
-                      inserted = inserted + 1
-                      cur = cur.next
-                    end
-
-                    table.insert(changes, { offset, deleted, inserted })
-
-                  end
-
                   if cur.data.type == UNTANGLED.CHAR then
-                    if not cur.data.deleted then
-                      offset = offset + 1
+                    if cur.data.deleted or cur.data.inserted then
+                      local inserted = ""
+                      local deleted = 0
+                      while cur do
+                        if cur.data.type == UNTANGLED.CHAR then
+                          if cur.data.deleted then
+                            deleted = deleted + 1
+                          elseif cur.data.inserted then
+                            inserted = inserted .. cur.data.sym
+                          else
+                            break
+                          end
+                        elseif cur.data.type == UNTANGLED.SENTINEL then
+                          break
+                        end
+                        cur = cur.next
+                      end
+
+                      table.insert(changes, { offset, deleted, string.len(inserted), inserted })
+
+                      if cur.data.type == UNTANGLED.SENTINEL then
+                        break
+                      end
+                    else
+                      if not cur.data.deleted then
+                        offset = offset + 1
+                      end
+                      cur = cur.next
                     end
                   elseif cur.data.type == UNTANGLED.SENTINEL then
                     break
                   end
-                  cur = cur.next
                 end
 
               elseif new_l.linetype == LineType.REFERENCE then
@@ -484,6 +486,7 @@ function M.attach()
               elseif new_l.linetype == LineType.SECTION then
                 local deleted_ref = {}
                 local len = size_deleted_from(sentinel, deleted_ref)
+
 
                 table.insert(changes, { offset, len, 0 })
 
@@ -517,24 +520,24 @@ function M.attach()
 
                 cur = sentinel
                 cur = cur.next
-                local len = 0
+                local inserted = ""
                 while cur do
                   if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
-                    len = len + string.len(cur.data.sym)
+                    inserted = inserted .. cur.data.sym
                   elseif cur.data.type == UNTANGLED.SENTINEL then
                     break
                   end
                   cur = cur.next
                 end
 
-                table.insert(changes, { offset, deleted, len })
+                table.insert(changes, { offset, deleted, string.len(inserted), inserted })
 
                 deps[l.str][name] = deps[l.str][name] - 1
                 if deps[l.str][name] == 0 then
                   deps[l.str][name] = nil
                 end
 
-                offset = offset + len
+                offset = offset + string.len(inserted)
               elseif new_l.linetype == LineType.REFERENCE then
                 local deleted_ref = {}
                 local deleted = size_deleted(l.str, deleted_ref)
@@ -573,7 +576,7 @@ function M.attach()
               end
             else
               if dirty[l.str] then
-                offset = scan_changes(l.str, offset, changes, start)
+                offset = scan_changes(l.str, offset, changes)
               else
                 if ref_sizes[l.str] then
                   offset = offset + ref_sizes[l.str]
@@ -585,9 +588,9 @@ function M.attach()
             if cur.data.deleted and not cur.data.inserted then
               local new_l = cur.data.new_parsed
               local inserted_ref = {}
-              local size = size_inserted_from(cur, inserted_ref)
-              if size > 0 then
-                table.insert(changes, { offset, 0, size })
+              local inserted = size_inserted_from(cur, inserted_ref)
+              if string.len(inserted) > 0 then
+                table.insert(changes, { offset, 0, string.len(inserted), inserted })
                 offset = offset + size
               end
 
@@ -642,7 +645,7 @@ function M.attach()
   end
 
   size_inserted_from = function(cur, inserted_ref)
-    local size = 0
+    local content = ""
     while cur do
       while cur do
         if cur.data.type == UNTANGLED.SENTINEL then
@@ -655,10 +658,10 @@ function M.attach()
       local l = cur.data.new_parsed or cur.data.parsed
       if l.linetype == LineType.TEXT then
         cur = cur.next
-        local len = 0
+        local inserted = ""
         while cur do
           if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
-            len = len + string.len(cur.data.sym)
+            inserted = inserted .. cur.data.sym
           elseif cur.data.type == UNTANGLED.SENTINEL then
             break
           end
@@ -666,12 +669,13 @@ function M.attach()
         end
 
         -- cur.data.len = len
-        size = size + len
+        size = size + string.len(inserted)
+        content = content .. inserted
 
       elseif l.linetype == LineType.REFERENCE then
         local inserted_ref = {}
-        local len = size_inserted(l.str, inserted_ref)
-        size = size + len
+        local inserted = size_inserted(l.str, inserted_ref)
+        content = content .. inserted
         cur = cur.next
 
       elseif l.linetype == LineType.SECTION then
@@ -679,7 +683,7 @@ function M.attach()
       end
 
     end
-    return size
+    return content
   end
 
   size_deleted = function(name, deleted_ref) 
@@ -702,22 +706,22 @@ function M.attach()
 
   size_inserted = function(name, inserted_ref) 
     if not sections_ll[name] then
-      return 0
+      return ""
     end
 
     if inserted_ref[name] then
       return inserted_ref[name]
     end
     
-    local size = 0
+    local content = ""
     for cur in linkedlist.iter(sections_ll[name]) do
       if not cur.data.deleted or cur.data.deleted ~= name then
         cur = cur.next
-        size = size + size_inserted_from(cur, inserted_ref)
+        content = content .. size_inserted_from(cur, inserted_ref)
       end
     end
-    inserted_ref[name] = size
-    return size
+    inserted_ref[name] = content
+    return content
   end
 
 
@@ -1105,7 +1109,7 @@ function M.attach()
       for name, _ in pairs(roots) do
         if dirty[name] then
           local changes = {}
-          scan_changes(name, 0, changes, start)
+          scan_changes(name, 0, changes)
           print("changes", vim.inspect(changes))
         end
       end

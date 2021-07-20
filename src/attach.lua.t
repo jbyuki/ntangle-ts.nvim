@@ -578,7 +578,7 @@ end
 @add_changes_newly_added_part+=
 if string.len(inserted) > 0 then
   table.insert(changes, { offset, 0, string.len(inserted), inserted })
-  offset = offset + size
+  offset = offset + string.len(inserted)
 end
 
 @attach_functions-=

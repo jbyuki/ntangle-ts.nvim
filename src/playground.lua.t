@@ -12,8 +12,13 @@ vim.api.nvim_set_current_buf(playground_buf)
 vim.api.nvim_set_current_win(old_win)
 
 @display_generated_into_playground+=
-playground_text = table.concat(lines, "\n")
-vim.api.nvim_buf_set_lines(playground_buf, 0, -1, true, lines)
+playground_text = ""
+for _, line in ipairs(lines) do
+  playground_text = playground_text .. line .. "\n"
+end
+
+local playground_lines = vim.split(playground_text, "\n")
+vim.api.nvim_buf_set_lines(playground_buf, 0, -1, true, playground_lines)
 
 @apply_changes_to_playground+=
 for _, change in ipairs(changes) do

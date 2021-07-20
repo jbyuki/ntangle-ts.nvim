@@ -29,4 +29,37 @@ byte range transformation to line transformation.
 * [ ] Handle tabs
 * [ ] Mitigate circular references
 * [ ] row, col for modifications
+* [ ] Cache sections (unmodified not recomputed)
 ...
+
+## Notes
+
+### #1
+
+Let the following code
+```
+@hello=
+@a
+@b
+@b+=
+bb
+@a+=
+aaaaa
+```
+
+With character granularity, it produces the following
+output:
+
+```
+aaaaabb
+```
+
+But the following is expected:
+
+```
+aaaaabb
+```
+
+### Solution to #1
+
+Append a virtual character `\n` at the end.

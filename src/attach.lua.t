@@ -8,9 +8,6 @@ function M.attach()
   @parse_variables
   @parse_line_and_save_in_sentinel
 
-  @compute_reference_sizes
-  @save_section_dependencies
-
   @generate_initial_tangled
 
   @clear_virtual_text_namespace
@@ -39,8 +36,6 @@ function M.attach()
       @remove_deleted_and_inserted_chars
       @remove_deleted_sections
       @replace_parsed_with_new_parsed
-      @recompute_section_sizes
-      dirty = {}
 
       @clear_virtual_text_namespace
       @show_line_as_virtual_text
@@ -57,7 +52,7 @@ end
 local lines = vim.api.nvim_buf_get_lines(0, 0, -1, true)
 
 @init_untangled_content+=
-local text = table.concat(lines, "\n")
+local text = table.concat(lines, "\n") .. "\n"
 for i=1,string.len(text) do
   local c = string.sub(text, i, i)
 
@@ -225,46 +220,6 @@ elseif l.linetype == LineType.SECTION then
   break
 end
 
-@parse_variables+=
-local ref_sizes = {}
-
-@compute_reference_sizes+=
-local compute_sizes
-compute_sizes = function(name) 
-  if not sections_ll[name] then
-    return 0
-  end
-
-  if ref_sizes[name] then
-    return ref_sizes[name]
-  end
-
-  local size = 0
-  for cur in linkedlist.iter(sections_ll[name]) do
-    cur = cur.next
-    while cur do
-      @go_to_next_sentinel
-      if not cur then break end
-      local l = cur.data.parsed
-      @if_text_add_to_size
-      @if_reference_recursve_and_add
-      @if_section_break
-    end
-  end
-  ref_sizes[name] = size
-  return size
-end
-
-for name, _ in pairs(roots) do
-  compute_sizes(name)
-end
-
-@if_text_add_to_size+=
-if l.linetype == LineType.TEXT then
-  @count_chars_until_next_sentinel
-  -- cur.data.len = len
-  size = size + len
-
 @count_chars_until_next_sentinel+=
 cur = cur.next
 local len = 0
@@ -283,41 +238,6 @@ elseif l.linetype == LineType.REFERENCE then
   cur.data.len = len
   size = size + len
   cur = cur.next
-
-@parse_variables+=
-local deps = {}
-
-@save_section_dependencies+=
-local build_dep
-build_dep = function(name)
-  if not sections_ll[name] then
-    return
-  end
-
-  for cur in linkedlist.iter(sections_ll[name]) do
-    cur = cur.next
-    while cur do
-      @go_to_next_sentinel
-      if not cur then break end
-      local l = cur.data.parsed
-      @if_reference_add_to_deps
-      @if_section_break
-      cur = cur.next
-    end
-  end
-end
-
-for name, _ in pairs(roots) do
-  build_dep(name)
-end
-
-@if_reference_add_to_deps+=
-if l.linetype == LineType.REFERENCE then
-  deps[l.str] = deps[l.str] or {}
-  deps[l.str][name] = deps[l.str][name] or 0
-  deps[l.str][name] = deps[l.str][name] + 1
-  build_dep(l.str)
-
 
 @search_start_range_character+=
 local cur = content.head
@@ -356,9 +276,6 @@ if l.linetype == LineType.SECTION then
   cur_section = sentinel
 end
 
-@parse_variables+=
-local dirty = {}
-
 @delete_characters+=
 local start = cur
 
@@ -370,7 +287,6 @@ for i=1,old_byte do
   end
   @mark_sentinel_to_reparse
   @mark_char_as_deleted
-  @mark_all_containing_sections_as_dirty
   @go_to_next_char
 end
 
@@ -382,28 +298,6 @@ end
 @mark_char_as_deleted+=
 cur.data.deleted = true
 table.insert(to_delete, cur)
-
-@parse_variables+=
-local mark_dirty
-mark_dirty = function(name, dirty) 
-  if dirty[name] then
-    return
-  end
-
-  dirty[name] = true
-  if deps[name] then
-    for d, _ in pairs(deps[name]) do
-      mark_dirty(d, dirty)
-    end
-  end
-end
-
-@mark_all_containing_sections_as_dirty+=
-if section then
-  mark_dirty(section, dirty)
-  section = nil
-end
-
 
 @go_to_next_char+=
 while cur do
@@ -426,7 +320,6 @@ local to_insert = {}
 @get_inserted_characters_from_buffer
 @skip_deleted_characters
 @check_start_pointer_position
-@mark_all_containing_sections_as_dirty
 @mark_sentinel_to_reparse
 for i=1,new_byte do
   local c = string.sub(text, i, i)
@@ -482,9 +375,6 @@ end
 @put_newly_parsed_data+=
 sentinel.data.new_parsed = new_l
 
-@mark_new_section_as_dirty+=
-dirty[new_l.str] = true
-
 @attach_functions+=
 local scan_changes
 scan_changes = function(name, offset, changes)
@@ -502,7 +392,7 @@ scan_changes = function(name, offset, changes)
         if not cur then break end
         local l = cur.data.parsed
         @if_text_scan_line
-        @if_reference_recurse_if_dirty
+        @if_reference_recurse
         @if_section_break_and_add_rest_if_deleted
       end
     end
@@ -513,9 +403,7 @@ end
 @send_bytes_events+=
 local changes = {}
 for name, _ in pairs(roots) do
-  if dirty[name] then
-    scan_changes(name, 0, changes)
-  end
+  scan_changes(name, 0, changes)
 end
 print("changes", vim.inspect(changes))
 
@@ -611,7 +499,7 @@ end
 table.insert(changes, { offset, deleted, string.len(inserted), inserted })
 
 @add_text_to_reference_change+=
-table.insert(changes, { offset, len, inserted })
+table.insert(changes, { offset, len, string.len(inserted), inserted })
 
 @update_reference_dependencies_text+=
 deps[new_l.str] = deps[new_l.str] or {}
@@ -621,7 +509,7 @@ deps[new_l.str][name] = deps[new_l.str][name] + 1
 @add_text_to_section_change+=
 table.insert(changes, { offset, len, 0 })
 
-@if_reference_recurse_if_dirty+=
+@if_reference_recurse+=
 elseif l.linetype == LineType.REFERENCE then
   local sentinel = cur
   local new_l = sentinel.data.new_parsed
@@ -633,28 +521,19 @@ elseif l.linetype == LineType.REFERENCE then
       cur = sentinel
       @count_chars_until_next_sentinel_not_deleted
       @add_reference_to_text_changes
-      @update_reference_deps_from_text
       offset = offset + string.len(inserted)
     elseif new_l.linetype == LineType.REFERENCE then
       @count_deleted_reference_content
       @count_inserted_reference_content
       @add_reference_changes
-      @update_reference_deps_from_reference
       l.str = new_ref
     elseif new_l.linetype == LineType.SECTION then
       @count_deleted_reference_content
       @add_reference_to_section_changes
-      @update_reference_deps_from_reference
       break
     end
   else
-    if dirty[l.str] then
-      offset = scan_changes(l.str, offset, changes)
-    else
-      if ref_sizes[l.str] then
-        offset = offset + ref_sizes[l.str]
-      end
-    end
+    offset = scan_changes(l.str, offset, changes)
   end
 
 @reparse_if_changed+=
@@ -674,12 +553,6 @@ reparsed = {}
 
 @add_reference_to_text_changes+=
 table.insert(changes, { offset, deleted, string.len(inserted), inserted })
-
-@update_reference_deps_from_text+=
-deps[l.str][name] = deps[l.str][name] - 1
-if deps[l.str][name] == 0 then
-  deps[l.str][name] = nil
-end
 
 @attach_functions-=
 local size_inserted_from
@@ -830,17 +703,7 @@ local inserted_ref = {}
 local inserted = size_inserted(new_l.str, inserted_ref)
 
 @add_reference_changes+=
-table.insert(changes, { offset, deleted, inserted })
-
-@update_reference_deps_from_reference+=
-deps[l.str][name] = deps[l.str][name] - 1
-if deps[l.str][name] == 0 then
-  deps[l.str][name] = nil
-end
-
-deps[new_l.str] = deps[new_l.str] or {}
-deps[new_l.str][name] = deps[new_l.str][name] or 0
-deps[new_l.str][name] = deps[new_l.str][name] + 1
+table.insert(changes, { offset, deleted, string.len(inserted), inserted })
 
 @add_reference_to_section_changes+=
 table.insert(changes, { offset, deleted, 0 })
@@ -854,7 +717,7 @@ if sec.data.deleted == name then
 elseif sec.data.inserted == name then
   @compute_section_part_size_inserted
   @add_inserted_section_part_changes
-  offset = offset + size
+  offset = offset + string.len(inserted)
   skip_part = true
 end
 
@@ -898,17 +761,6 @@ end
 
 for _, n in ipairs(to_insert) do
   n.data.inserted = nil
-end
-
-@recompute_section_sizes+=
-for name, _ in pairs(dirty) do
-  ref_sizes[name] = nil
-end
-
-for name, _ in pairs(roots) do
-  if dirty[name] then
-    compute_sizes(name)
-  end
 end
 
 @script_variables+=
@@ -957,24 +809,19 @@ for cur, _ in pairs(reparsed) do
         if new_l.str ~= l.str then
           @mark_removed_from_old_sections_ll
           @append_to_new_sections_ll
-          @put_new_section_in_dirty
         end
       elseif new_l.linetype == LineType.TEXT then
         @mark_removed_from_old_sections_ll
-        @mark_prev_section_as_dirty
       elseif new_l.linetype == LineType.REFERENCE then
         @mark_removed_from_old_sections_ll
-        @mark_prev_section_as_dirty
       end
     elseif l.linetype == LineType.TEXT then
       if new_l.linetype == LineType.SECTION then
         @append_to_new_sections_ll
-        @put_new_section_in_dirty
       end
     elseif  l.linetype == LineType.REFERENCE then
       if new_l.linetype == LineType.SECTION then
         @append_to_new_sections_ll
-        @put_new_section_in_dirty
       end
     end
   end
@@ -1025,15 +872,6 @@ end
 if not added then
   local it = linkedlist.push_back(sections_ll[new_l.str], sentinel)
   sentinel.data.new_section = it
-end
-
-@put_new_section_in_dirty+=
-mark_dirty(new_l.str, dirty)
-
-@mark_prev_section_as_dirty+=
-if prev_section then
-  local l = prev_section.data.parsed
-  mark_dirty(l.str, dirty)
 end
 
 @remove_deleted_sections+=

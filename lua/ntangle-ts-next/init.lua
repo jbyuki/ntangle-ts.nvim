@@ -32,7 +32,7 @@ function M.attach()
 
   local content = {}
 
-  local text = table.concat(lines, "\n")
+  local text = table.concat(lines, "\n") .. "\n"
   for i=1,string.len(text) do
     local c = string.sub(text, i, i)
 
@@ -61,26 +61,6 @@ function M.attach()
     end
 
     cur = cur.next
-  end
-
-  local ref_sizes = {}
-
-  local deps = {}
-
-  local dirty = {}
-
-  local mark_dirty
-  mark_dirty = function(name, dirty) 
-    if dirty[name] then
-      return
-    end
-
-    dirty[name] = true
-    if deps[name] then
-      for d, _ in pairs(deps[name]) do
-        mark_dirty(d, dirty)
-      end
-    end
   end
 
   local sections_ll = {}
@@ -136,103 +116,6 @@ function M.attach()
   end
 
 
-  local compute_sizes
-  compute_sizes = function(name) 
-    if not sections_ll[name] then
-      return 0
-    end
-
-    if ref_sizes[name] then
-      return ref_sizes[name]
-    end
-
-    local size = 0
-    for cur in linkedlist.iter(sections_ll[name]) do
-      cur = cur.next
-      while cur do
-        while cur do
-          if cur.data.type == UNTANGLED.SENTINEL then
-            break
-          end
-          cur = cur.next
-        end
-
-        if not cur then break end
-        local l = cur.data.parsed
-        if l.linetype == LineType.TEXT then
-          cur = cur.next
-          local len = 0
-          while cur do
-            if cur.data.type == UNTANGLED.CHAR then
-              len = len + string.len(cur.data.sym)
-            elseif cur.data.type == UNTANGLED.SENTINEL then
-              break
-            end
-            cur = cur.next
-          end
-
-          -- cur.data.len = len
-          size = size + len
-
-        elseif l.linetype == LineType.REFERENCE then
-          local len = compute_sizes(l.str)
-          cur.data.len = len
-          size = size + len
-          cur = cur.next
-
-        elseif l.linetype == LineType.SECTION then
-          break
-        end
-
-      end
-    end
-    ref_sizes[name] = size
-    return size
-  end
-
-  for name, _ in pairs(roots) do
-    compute_sizes(name)
-  end
-
-  local build_dep
-  build_dep = function(name)
-    if not sections_ll[name] then
-      return
-    end
-
-    for cur in linkedlist.iter(sections_ll[name]) do
-      cur = cur.next
-      while cur do
-        while cur do
-          if cur.data.type == UNTANGLED.SENTINEL then
-            break
-          end
-          cur = cur.next
-        end
-
-        if not cur then break end
-        local l = cur.data.parsed
-        if l.linetype == LineType.REFERENCE then
-          deps[l.str] = deps[l.str] or {}
-          deps[l.str][name] = deps[l.str][name] or 0
-          deps[l.str][name] = deps[l.str][name] + 1
-          build_dep(l.str)
-
-
-        elseif l.linetype == LineType.SECTION then
-          break
-        end
-
-        cur = cur.next
-      end
-    end
-  end
-
-  for name, _ in pairs(roots) do
-    build_dep(name)
-  end
-
-
   local generate 
   generate = function(name, lines) 
     if not sections_ll[name] then
@@ -275,6 +158,53 @@ function M.attach()
         elseif l.linetype == LineType.REFERENCE then
           generate(l.str, lines)
           cur = cur.next
+
+        elseif l.linetype == LineType.REFERENCE then
+          local sentinel = cur
+          local new_l = sentinel.data.new_parsed
+          cur = cur.next
+
+          if new_l then
+            if new_l.linetype == LineType.TEXT then
+              local deleted_ref = {}
+              local deleted = size_deleted(l.str, deleted_ref)
+
+              cur = sentinel
+              cur = cur.next
+              local inserted = ""
+              while cur do
+                if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
+                  inserted = inserted .. cur.data.sym
+                elseif cur.data.type == UNTANGLED.SENTINEL then
+                  break
+                end
+                cur = cur.next
+              end
+
+              table.insert(changes, { offset, deleted, string.len(inserted), inserted })
+
+              offset = offset + string.len(inserted)
+            elseif new_l.linetype == LineType.REFERENCE then
+              local deleted_ref = {}
+              local deleted = size_deleted(l.str, deleted_ref)
+
+              local inserted_ref = {}
+              local inserted = size_inserted(new_l.str, inserted_ref)
+
+              table.insert(changes, { offset, deleted, string.len(inserted), inserted })
+
+              l.str = new_ref
+            elseif new_l.linetype == LineType.SECTION then
+              local deleted_ref = {}
+              local deleted = size_deleted(l.str, deleted_ref)
+
+              table.insert(changes, { offset, deleted, 0 })
+
+              break
+            end
+          else
+            offset = scan_changes(l.str, offset, changes)
+          end
 
         elseif l.linetype == LineType.SECTION then
           break
@@ -415,7 +345,7 @@ function M.attach()
           table.insert(changes, { offset, 0, string.len(inserted), inserted })
         end
 
-        offset = offset + size
+        offset = offset + string.len(inserted)
         skip_part = true
       end
 
@@ -491,7 +421,7 @@ function M.attach()
                   cur = cur.next
                 end
 
-                table.insert(changes, { offset, len, inserted })
+                table.insert(changes, { offset, len, string.len(inserted), inserted })
 
                 deps[new_l.str] = deps[new_l.str] or {}
                 deps[new_l.str][name] = deps[new_l.str][name] or 0
@@ -523,6 +453,10 @@ function M.attach()
             end
 
           elseif l.linetype == LineType.REFERENCE then
+            generate(l.str, lines)
+            cur = cur.next
+
+          elseif l.linetype == LineType.REFERENCE then
             local sentinel = cur
             local new_l = sentinel.data.new_parsed
             cur = cur.next
@@ -546,11 +480,6 @@ function M.attach()
 
                 table.insert(changes, { offset, deleted, string.len(inserted), inserted })
 
-                deps[l.str][name] = deps[l.str][name] - 1
-                if deps[l.str][name] == 0 then
-                  deps[l.str][name] = nil
-                end
-
                 offset = offset + string.len(inserted)
               elseif new_l.linetype == LineType.REFERENCE then
                 local deleted_ref = {}
@@ -559,16 +488,7 @@ function M.attach()
                 local inserted_ref = {}
                 local inserted = size_inserted(new_l.str, inserted_ref)
 
-                table.insert(changes, { offset, deleted, inserted })
-
-                deps[l.str][name] = deps[l.str][name] - 1
-                if deps[l.str][name] == 0 then
-                  deps[l.str][name] = nil
-                end
-
-                deps[new_l.str] = deps[new_l.str] or {}
-                deps[new_l.str][name] = deps[new_l.str][name] or 0
-                deps[new_l.str][name] = deps[new_l.str][name] + 1
+                table.insert(changes, { offset, deleted, string.len(inserted), inserted })
 
                 l.str = new_ref
               elseif new_l.linetype == LineType.SECTION then
@@ -577,25 +497,10 @@ function M.attach()
 
                 table.insert(changes, { offset, deleted, 0 })
 
-                deps[l.str][name] = deps[l.str][name] - 1
-                if deps[l.str][name] == 0 then
-                  deps[l.str][name] = nil
-                end
-
-                deps[new_l.str] = deps[new_l.str] or {}
-                deps[new_l.str][name] = deps[new_l.str][name] or 0
-                deps[new_l.str][name] = deps[new_l.str][name] + 1
-
                 break
               end
             else
-              if dirty[l.str] then
-                offset = scan_changes(l.str, offset, changes)
-              else
-                if ref_sizes[l.str] then
-                  offset = offset + ref_sizes[l.str]
-                end
-              end
+              offset = scan_changes(l.str, offset, changes)
             end
 
           elseif l.linetype == LineType.SECTION then
@@ -793,12 +698,6 @@ function M.attach()
         cur.data.deleted = true
         table.insert(to_delete, cur)
 
-        if section then
-          mark_dirty(section, dirty)
-          section = nil
-        end
-
-
         while cur do
           cur = cur.next
           if cur.data.type == UNTANGLED.SENTINEL then
@@ -841,12 +740,6 @@ function M.attach()
       if cur == start.prev then
         shifted = true
       end
-
-      if section then
-        mark_dirty(section, dirty)
-        section = nil
-      end
-
 
       if sentinel then
         reparsed[sentinel] = true
@@ -966,24 +859,12 @@ function M.attach()
                   end
                 end
 
-                mark_dirty(new_l.str, dirty)
-
               end
             elseif new_l.linetype == LineType.TEXT then
               sentinel.data.deleted = l.str
 
-              if prev_section then
-                local l = prev_section.data.parsed
-                mark_dirty(l.str, dirty)
-              end
-
             elseif new_l.linetype == LineType.REFERENCE then
               sentinel.data.deleted = l.str
-
-              if prev_section then
-                local l = prev_section.data.parsed
-                mark_dirty(l.str, dirty)
-              end
 
             end
           elseif l.linetype == LineType.TEXT then
@@ -1047,8 +928,6 @@ function M.attach()
                 end
               end
 
-              mark_dirty(new_l.str, dirty)
-
             end
           elseif  l.linetype == LineType.REFERENCE then
             if new_l.linetype == LineType.SECTION then
@@ -1111,8 +990,6 @@ function M.attach()
                 end
               end
 
-              mark_dirty(new_l.str, dirty)
-
             end
           end
         end
@@ -1120,9 +997,7 @@ function M.attach()
 
       local changes = {}
       for name, _ in pairs(roots) do
-        if dirty[name] then
-          scan_changes(name, 0, changes)
-        end
+        scan_changes(name, 0, changes)
       end
       print("changes", vim.inspect(changes))
 
@@ -1158,17 +1033,6 @@ function M.attach()
       end
       reparsed = {}
 
-      for name, _ in pairs(dirty) do
-        ref_sizes[name] = nil
-      end
-
-      for name, _ in pairs(roots) do
-        if dirty[name] then
-          compute_sizes(name)
-        end
-      end
-
-      dirty = {}
 
       vim.api.nvim_buf_clear_namespace(0, ns_debug, 0, -1)
 

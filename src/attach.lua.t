@@ -341,9 +341,9 @@ end
 @if_section_set_as_past+=
 if l.linetype == LineType.SECTION then
   if l.op == "-=" then
-    front_sections[l.str] = sentinel
+    front_sections[l.str] = sentinel.data.section
   else
-    back_sections[l.str] = sentinel
+    back_sections[l.str] = sentinel.data.section
   end
   prev_section = cur_section
   cur_section = sentinel
@@ -995,12 +995,12 @@ if not added then
 end
 
 @put_new_section_in_dirty+=
-dirty[new_l.str] = true
+mark_dirty(new_l.str, dirty)
 
 @mark_prev_section_as_dirty+=
 if prev_section then
   local l = prev_section.data.parsed
-  dirty[l.str] = true
+  mark_dirty(l.str, dirty)
 end
 
 @remove_deleted_sections+=

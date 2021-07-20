@@ -732,9 +732,9 @@ function M.attach()
 
           if l.linetype == LineType.SECTION then
             if l.op == "-=" then
-              front_sections[l.str] = sentinel
+              front_sections[l.str] = sentinel.data.section
             else
-              back_sections[l.str] = sentinel
+              back_sections[l.str] = sentinel.data.section
             end
             prev_section = cur_section
             cur_section = sentinel
@@ -934,7 +934,7 @@ function M.attach()
                   end
                 end
 
-                dirty[new_l.str] = true
+                mark_dirty(new_l.str, dirty)
 
               end
             elseif new_l.linetype == LineType.TEXT then
@@ -942,7 +942,7 @@ function M.attach()
 
               if prev_section then
                 local l = prev_section.data.parsed
-                dirty[l.str] = true
+                mark_dirty(l.str, dirty)
               end
 
             elseif new_l.linetype == LineType.REFERENCE then
@@ -950,7 +950,7 @@ function M.attach()
 
               if prev_section then
                 local l = prev_section.data.parsed
-                dirty[l.str] = true
+                mark_dirty(l.str, dirty)
               end
 
             end
@@ -1015,7 +1015,7 @@ function M.attach()
                 end
               end
 
-              dirty[new_l.str] = true
+              mark_dirty(new_l.str, dirty)
 
             end
           end

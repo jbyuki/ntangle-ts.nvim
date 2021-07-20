@@ -392,7 +392,7 @@ scan_changes = function(name, offset, changes)
         if not cur then break end
         local l = cur.data.parsed
         @if_text_scan_line
-        @if_reference_recurse
+        @if_reference_scan_recurse
         @if_section_break_and_add_rest_if_deleted
       end
     end
@@ -509,7 +509,7 @@ deps[new_l.str][name] = deps[new_l.str][name] + 1
 @add_text_to_section_change+=
 table.insert(changes, { offset, len, 0 })
 
-@if_reference_recurse+=
+@if_reference_scan_recurse+=
 elseif l.linetype == LineType.REFERENCE then
   local sentinel = cur
   local new_l = sentinel.data.new_parsed

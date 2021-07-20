@@ -159,53 +159,6 @@ function M.attach()
           generate(l.str, lines)
           cur = cur.next
 
-        elseif l.linetype == LineType.REFERENCE then
-          local sentinel = cur
-          local new_l = sentinel.data.new_parsed
-          cur = cur.next
-
-          if new_l then
-            if new_l.linetype == LineType.TEXT then
-              local deleted_ref = {}
-              local deleted = size_deleted(l.str, deleted_ref)
-
-              cur = sentinel
-              cur = cur.next
-              local inserted = ""
-              while cur do
-                if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
-                  inserted = inserted .. cur.data.sym
-                elseif cur.data.type == UNTANGLED.SENTINEL then
-                  break
-                end
-                cur = cur.next
-              end
-
-              table.insert(changes, { offset, deleted, string.len(inserted), inserted })
-
-              offset = offset + string.len(inserted)
-            elseif new_l.linetype == LineType.REFERENCE then
-              local deleted_ref = {}
-              local deleted = size_deleted(l.str, deleted_ref)
-
-              local inserted_ref = {}
-              local inserted = size_inserted(new_l.str, inserted_ref)
-
-              table.insert(changes, { offset, deleted, string.len(inserted), inserted })
-
-              l.str = new_ref
-            elseif new_l.linetype == LineType.SECTION then
-              local deleted_ref = {}
-              local deleted = size_deleted(l.str, deleted_ref)
-
-              table.insert(changes, { offset, deleted, 0 })
-
-              break
-            end
-          else
-            offset = scan_changes(l.str, offset, changes)
-          end
-
         elseif l.linetype == LineType.SECTION then
           break
         end
@@ -451,10 +404,6 @@ function M.attach()
 
               offset = offset + len
             end
-
-          elseif l.linetype == LineType.REFERENCE then
-            generate(l.str, lines)
-            cur = cur.next
 
           elseif l.linetype == LineType.REFERENCE then
             local sentinel = cur

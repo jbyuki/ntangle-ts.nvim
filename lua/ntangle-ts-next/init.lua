@@ -211,7 +211,8 @@ function M.attach()
         local l = cur.data.parsed
         if l.linetype == LineType.REFERENCE then
           deps[l.str] = deps[l.str] or {}
-          deps[l.str][name] = true
+          deps[l.str][name] = deps[l.str][name] or 0
+          deps[l.str][name] = deps[l.str][name] + 1
           build_dep(l.str)
 
 
@@ -476,6 +477,10 @@ function M.attach()
 
                 table.insert(changes, { offset, len, inserted })
 
+                deps[new_l.str] = deps[new_l.str] or {}
+                deps[new_l.str][name] = deps[new_l.str][name] or 0
+                deps[new_l.str][name] = deps[new_l.str][name] + 1
+
               elseif new_l.linetype == LineType.SECTION then
                 local deleted_ref = {}
                 local len = size_deleted_from(sentinel, deleted_ref)
@@ -524,6 +529,11 @@ function M.attach()
 
                 table.insert(changes, { offset, deleted, len })
 
+                deps[l.str][name] = deps[l.str][name] - 1
+                if deps[l.str][name] == 0 then
+                  deps[l.str][name] = nil
+                end
+
                 offset = offset + len
               elseif new_l.linetype == LineType.REFERENCE then
                 local deleted_ref = {}
@@ -533,6 +543,15 @@ function M.attach()
                 local inserted = size_inserted(new_l.str, inserted_ref)
 
                 table.insert(changes, { offset, deleted, inserted })
+
+                deps[l.str][name] = deps[l.str][name] - 1
+                if deps[l.str][name] == 0 then
+                  deps[l.str][name] = nil
+                end
+
+                deps[new_l.str] = deps[new_l.str] or {}
+                deps[new_l.str][name] = deps[new_l.str][name] or 0
+                deps[new_l.str][name] = deps[new_l.str][name] + 1
 
                 l.str = new_ref
               end

@@ -34,7 +34,7 @@ byte range transformation to line transformation.
 
 ## Notes
 
-<details><summary>#1 Last line no newline</summary>
+<details><summary><b>#1</b> Last line no newline</summary>
 
 Let the following code
 ```

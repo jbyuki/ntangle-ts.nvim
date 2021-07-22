@@ -379,8 +379,12 @@ for cur, _ in pairs(new_reparsed) do
 end
 
 @scan_if_new_sentinels+=
+local only_inserted = true
 while cur do
   if cur.data.type == UNTANGLED.CHAR then
+    if not cur.data.inserted then
+      only_inserted = false
+    end
     if cur.data.sym == "\n" then
       @if_newline_inserted_append_sentinel
       @if_newline_deleted_deactive_following_sentinel
@@ -402,6 +406,21 @@ if cur.data.inserted then
   }
   local n = linkedlist.insert_after(content, cur, s)
   new_reparsed[n] = true
+  @if_only_inserted_swap_with_sentinel
+
+@if_only_inserted_swap_with_sentinel+=
+if only_inserted then
+  n.data = sentinel.data
+  sentinel.data = s
+  sentinel = n
+  @if_section_also_update_sections_ll
+end
+
+@if_section_also_update_sections_ll+=
+if sentinel.data.section then
+  local sec = sentinel.data.section
+  sec.data = sentinel
+end
 
 @if_newline_deleted_deactive_following_sentinel+=
 elseif cur.data.deleted then

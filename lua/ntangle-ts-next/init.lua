@@ -767,8 +767,12 @@ function M.attach()
       local new_reparsed = {}
       for cur, _ in pairs(reparsed) do
         local sentinel = cur
+        local only_inserted = true
         while cur do
           if cur.data.type == UNTANGLED.CHAR then
+            if not cur.data.inserted then
+              only_inserted = false
+            end
             if cur.data.sym == "\n" then
               -- d d d d i i i i
               if cur.data.inserted then
@@ -778,6 +782,17 @@ function M.attach()
                 }
                 local n = linkedlist.insert_after(content, cur, s)
                 new_reparsed[n] = true
+                if only_inserted then
+                  n.data = sentinel.data
+                  sentinel.data = s
+                  sentinel = n
+                  if sentinel.data.section then
+                    local sec = sentinel.data.section
+                    sec.data = sentinel
+                  end
+
+                end
+
 
               elseif cur.data.deleted then
                 if cur.next then

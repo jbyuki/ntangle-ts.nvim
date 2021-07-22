@@ -352,7 +352,7 @@ function M.attach()
                       table.insert(changes, { offset, deleted, string.len(inserted), inserted })
 
                       offset = offset + string.len(inserted)
-                      if cur.data.type == UNTANGLED.SENTINEL then
+                      if cur and cur.data.type == UNTANGLED.SENTINEL then
                         break
                       end
                     else
@@ -361,7 +361,7 @@ function M.attach()
                       end
                       cur = cur.next
                     end
-                  elseif cur.data.type == UNTANGLED.SENTINEL then
+                  elseif cur and cur.data.type == UNTANGLED.SENTINEL then
                     break
                   end
                 end
@@ -483,7 +483,7 @@ function M.attach()
                     table.insert(changes, { offset, deleted, string.len(inserted), inserted })
 
                     offset = offset + string.len(inserted)
-                    if cur.data.type == UNTANGLED.SENTINEL then
+                    if cur and cur.data.type == UNTANGLED.SENTINEL then
                       break
                     end
                   else
@@ -492,7 +492,7 @@ function M.attach()
                     end
                     cur = cur.next
                   end
-                elseif cur.data.type == UNTANGLED.SENTINEL then
+                elseif cur and cur.data.type == UNTANGLED.SENTINEL then
                   break
                 end
               end
@@ -766,6 +766,16 @@ function M.attach()
         n.sym = c
         n.inserted = true
 
+        if c == "\n" then
+          while cur.next do
+            if cur.next.data.type ~= UNTANGLED.CHAR or cur.next.data.sym ~= "\n" then
+              break
+            end
+            cur = cur.next
+          end
+        end
+
+
         cur = linkedlist.insert_after(content, cur, n)
         table.insert(to_insert, cur)
 
@@ -781,24 +791,19 @@ function M.attach()
         local sentinel = cur
         local only_inserted = true
         local only_deleted = true
+        local scanned = false
+        local newline = false
+        cur = cur.next
         while cur do
           if cur.data.type == UNTANGLED.CHAR then
-            if not cur.data.inserted then
-              only_inserted = false
-            end
-
-            if not cur.data.deleted then
-              only_deleted = false
-            end
-
-            if cur.data.sym == "\n" then
+            if newline then
               -- d d d d i i i i
               if cur.data.inserted then
                 local s = untangled.new("SENTINEL")
                 s.parsed = {
                   linetype = LineType.TEXT,
                 }
-                local n = linkedlist.insert_after(content, cur, s)
+                local n = linkedlist.insert_before(content, cur, s)
                 new_reparsed[n] = true
                 if only_inserted then
                   n.data = sentinel.data
@@ -831,12 +836,25 @@ function M.attach()
                     end
                   end
                 end
-
-              else
-                break
               end
 
+              newline = false
             end
+
+            if not cur.data.inserted then
+              only_inserted = false
+            end
+
+            if not cur.data.deleted then
+              only_deleted = false
+            end
+
+            if cur.data.sym == "\n" then
+              newline = true
+            end
+
+          elseif cur.data.type == UNTANGLED.SENTINEL then
+            break
           end
           cur = cur.next
         end
@@ -1130,48 +1148,50 @@ function M.attach()
 
       vim.api.nvim_buf_clear_namespace(0, ns_debug, 0, -1)
 
-      local lnum = 0
-      local cur = content.head
-      while cur do
-        local sentinel = cur
-        cur = cur.next
-        local line = ""
-        local changed = false
+      vim.schedule(function()
+        local lnum = 0
+        local cur = content.head
         while cur do
-          if cur.data.deleted or cur.data.inserted then
-            changed = true
-          end
-
-          if cur.data:is_newline() and not cur.data.deleted then
-            cur = cur.next
-            break
-          end
-
-          if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
-            line = line .. cur.data.sym
-          end
+          local sentinel = cur
           cur = cur.next
-        end
+          local line = ""
+          local changed = false
+          while cur do
+            if cur.data.deleted or cur.data.inserted then
+              changed = true
+            end
 
-        local linetype = "UNKNOWN"
-        local l = sentinel.data.parsed
-        if l then
-          if l.linetype == LineType.TEXT then
-            linetype = "TEXT"
-          elseif l.linetype == LineType.REFERENCE then
-            linetype = "REF"
-          elseif l.linetype == LineType.SECTION then
-            linetype = "SECTION"
+            if cur.data:is_newline() and not cur.data.deleted then
+              cur = cur.next
+              break
+            end
+
+            if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
+              line = line .. cur.data.sym
+            end
+            cur = cur.next
           end
+
+          local linetype = "UNKNOWN"
+          local l = sentinel.data.parsed
+          if l then
+            if l.linetype == LineType.TEXT then
+              linetype = "TEXT"
+            elseif l.linetype == LineType.REFERENCE then
+              linetype = "REF"
+            elseif l.linetype == LineType.SECTION then
+              linetype = "SECTION"
+            end
+          end
+
+          vim.api.nvim_buf_set_extmark(0, ns_debug, lnum, 0, {
+            virt_text = {{line, "NonText"}, {"[" .. linetype .. "]", "WarningMsg"}}
+          })
+
+          lnum = lnum + 1
         end
 
-        vim.api.nvim_buf_set_extmark(0, ns_debug, lnum, 0, {
-          virt_text = {{line, "NonText"}, {"[" .. linetype .. "]", "WarningMsg"}}
-        })
-
-        lnum = lnum + 1
-      end
-
+      end)
 
       for _, change in ipairs(changes) do
         local off, del, ins, ins_text = unpack(change)

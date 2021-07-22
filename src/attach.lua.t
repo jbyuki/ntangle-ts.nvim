@@ -41,7 +41,9 @@ function M.attach()
       @delete_empty_sentinels
 
       @clear_virtual_text_namespace
-      @show_line_as_virtual_text
+      vim.schedule(function()
+        @show_line_as_virtual_text
+      end)
 
       @apply_changes_to_playground
       vim.schedule(function()
@@ -378,8 +380,20 @@ local n = untangled.new("CHAR")
 n.sym = c
 n.inserted = true
 
+@if_newline_with_no_inserted_skip
 cur = linkedlist.insert_after(content, cur, n)
 table.insert(to_insert, cur)
+
+@if_newline_with_no_inserted_skip+=
+if c == "\n" then
+  while cur.next do
+    if cur.next.data.type ~= UNTANGLED.CHAR or cur.next.data.sym ~= "\n" then
+      break
+    end
+    cur = cur.next
+  end
+end
+
 
 @add_new_sentinels+=
 local new_reparsed = {}
@@ -395,8 +409,17 @@ end
 @scan_if_new_sentinels+=
 local only_inserted = true
 local only_deleted = true
+local scanned = false
+local newline = false
+cur = cur.next
 while cur do
   if cur.data.type == UNTANGLED.CHAR then
+    if newline then
+      @if_newline_inserted_append_sentinel
+      @if_newline_deleted_deactive_following_sentinel
+      newline = false
+    end
+
     if not cur.data.inserted then
       only_inserted = false
     end
@@ -406,10 +429,11 @@ while cur do
     end
 
     if cur.data.sym == "\n" then
-      @if_newline_inserted_append_sentinel
-      @if_newline_deleted_deactive_following_sentinel
-      @otherwise_unmodified_newline_break
+      newline = true
     end
+
+  elseif cur.data.type == UNTANGLED.SENTINEL then
+    break
   end
   cur = cur.next
 end
@@ -424,7 +448,7 @@ if cur.data.inserted then
   s.parsed = {
     linetype = LineType.TEXT,
   }
-  local n = linkedlist.insert_after(content, cur, s)
+  local n = linkedlist.insert_before(content, cur, s)
   new_reparsed[n] = true
   @if_only_inserted_swap_with_sentinel
 
@@ -457,6 +481,7 @@ elseif cur.data.deleted then
       end
     end
   end
+end
 
 @if_only_deleted_remove_sentinel+=
 sentinel.data.new_parsed = {
@@ -464,11 +489,6 @@ sentinel.data.new_parsed = {
 }
 new_reparsed[sentinel] = true
 sentinel = n
-
-@otherwise_unmodified_newline_break+=
-else
-  break
-end
 
 @delete_empty_sentinels+=
 for cur, _ in pairs(reparsed) do
@@ -580,7 +600,7 @@ while cur do
       @scan_text_modified_range
       @add_text_to_text_changes
       offset = offset + string.len(inserted)
-      if cur.data.type == UNTANGLED.SENTINEL then
+      if cur and cur.data.type == UNTANGLED.SENTINEL then
         break
       end
     else
@@ -589,7 +609,7 @@ while cur do
       end
       cur = cur.next
     end
-  elseif cur.data.type == UNTANGLED.SENTINEL then
+  elseif cur and cur.data.type == UNTANGLED.SENTINEL then
     break
   end
 end

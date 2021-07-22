@@ -768,11 +768,17 @@ function M.attach()
       for cur, _ in pairs(reparsed) do
         local sentinel = cur
         local only_inserted = true
+        local only_deleted = true
         while cur do
           if cur.data.type == UNTANGLED.CHAR then
             if not cur.data.inserted then
               only_inserted = false
             end
+
+            if not cur.data.deleted then
+              only_deleted = false
+            end
+
             if cur.data.sym == "\n" then
               -- d d d d i i i i
               if cur.data.inserted then
@@ -798,10 +804,19 @@ function M.attach()
                 if cur.next then
                   local n = cur.next
                   if n.data.type == UNTANGLED.SENTINEL then
-                    n.data.new_parsed = {
-                      linetype = LineType.EMPTY,
-                    }
-                    new_reparsed[n] = true
+                    if only_deleted then
+                      sentinel.data.new_parsed = {
+                        linetype = LineType.TEXT,
+                      }
+                      new_reparsed[sentinel] = true
+                      sentinel = n
+
+                    else
+                      n.data.new_parsed = {
+                        linetype = LineType.TEXT,
+                      }
+                      new_reparsed[n] = true
+                    end
                   end
                 end
 

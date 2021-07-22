@@ -380,11 +380,17 @@ end
 
 @scan_if_new_sentinels+=
 local only_inserted = true
+local only_deleted = true
 while cur do
   if cur.data.type == UNTANGLED.CHAR then
     if not cur.data.inserted then
       only_inserted = false
     end
+
+    if not cur.data.deleted then
+      only_deleted = false
+    end
+
     if cur.data.sym == "\n" then
       @if_newline_inserted_append_sentinel
       @if_newline_deleted_deactive_following_sentinel
@@ -427,12 +433,23 @@ elseif cur.data.deleted then
   if cur.next then
     local n = cur.next
     if n.data.type == UNTANGLED.SENTINEL then
-      n.data.new_parsed = {
-        linetype = LineType.EMPTY,
-      }
-      new_reparsed[n] = true
+      if only_deleted then
+        @if_only_deleted_remove_sentinel
+      else
+        n.data.new_parsed = {
+          linetype = LineType.TEXT,
+        }
+        new_reparsed[n] = true
+      end
     end
   end
+
+@if_only_deleted_remove_sentinel+=
+sentinel.data.new_parsed = {
+  linetype = LineType.TEXT,
+}
+new_reparsed[sentinel] = true
+sentinel = n
 
 @otherwise_unmodified_newline_break+=
 else

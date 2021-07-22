@@ -723,13 +723,20 @@ function M.attach()
       local cur = start
       sentinel = start_sentinel
       local to_insert = {}
-      local lines = vim.api.nvim_buf_get_lines(0, start_row, start_row+new_row+1, true)
+      local lines = vim.api.nvim_buf_get_lines(0, start_row, start_row+new_row+1, false)
       lines[1] = string.sub(lines[1], start_col+1)
       lines[#lines] = string.sub(lines[#lines], 1, new_col)
+      if #lines < new_row+1 then
+        table.insert(lines, "")
+      end
+
       local text = table.concat(lines, "\n")
 
       local prev
-      prev = cur.prev
+      if cur then
+        prev = cur.prev
+      end
+
       while cur do
         if not cur.data.deleted then
           break
@@ -740,7 +747,12 @@ function M.attach()
       cur = prev
 
       local shifted = false
-      if cur == start.prev then
+      if start and cur == start.prev then
+        shifted = true
+      end
+
+      if not cur then
+        cur = content.tail.prev
         shifted = true
       end
 

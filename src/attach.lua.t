@@ -28,6 +28,8 @@ function M.attach()
       @delete_characters
       @insert_characters
 
+      @add_new_sentinels
+
       @reparse_lines
 
       @readjust_sections
@@ -36,6 +38,7 @@ function M.attach()
       @remove_deleted_and_inserted_chars
       @remove_deleted_sections
       @replace_parsed_with_new_parsed
+      @delete_empty_sentinels
 
       @clear_virtual_text_namespace
       @show_line_as_virtual_text
@@ -144,7 +147,7 @@ end
 local line = ""
 local changed = false
 while cur do
-  if cur.data:is_newline() then
+  if cur.data:is_newline() and not cur.data.deleted then
     cur = cur.next
     break
   end
@@ -364,12 +367,75 @@ n.inserted = true
 cur = linkedlist.insert_after(content, cur, n)
 table.insert(to_insert, cur)
 
+@add_new_sentinels+=
+local new_reparsed = {}
+for cur, _ in pairs(reparsed) do
+  local sentinel = cur
+  @scan_if_new_sentinels
+end
+
+for cur, _ in pairs(new_reparsed) do
+  reparsed[cur] = true
+end
+
+@scan_if_new_sentinels+=
+while cur do
+  if cur.data.type == UNTANGLED.CHAR then
+    if cur.data.sym == "\n" then
+      @if_newline_inserted_append_sentinel
+      @if_newline_deleted_deactive_following_sentinel
+      @otherwise_unmodified_newline_break
+    end
+  end
+  cur = cur.next
+end
+
+@line_types+=
+EMPTY = 6,
+
+@if_newline_inserted_append_sentinel+=
+-- d d d d i i i i
+if cur.data.inserted then
+  local s = untangled.new("SENTINEL")
+  s.new_parsed = {
+    linetype = LineType.EMPTY,
+  }
+  local n = linkedlist.insert_after(content, cur, s)
+  new_reparsed[n] = true
+
+@if_newline_deleted_deactive_following_sentinel+=
+elseif cur.data.deleted then
+  if cur.next then
+    local n = cur.next
+    if n.data.type == UNTANGLED.SENTINEL then
+      n.data.new_parsed = {
+        linetype = LineType.EMPTY,
+      }
+      new_reparsed[n] = true
+    end
+  end
+
+@otherwise_unmodified_newline_break+=
+else
+  break
+end
+
+@delete_empty_sentinels+=
+for cur, _ in pairs(reparsed) do
+  local l = cur.data.parsed
+  if l.linetype == LineType.EMPTY then
+    linkedlist.remove(content, cur)
+  end
+end
+
 @reparse_lines+=
 for cur, _ in pairs(reparsed) do
   local sentinel = cur
-  @collect_letter_on_line
-  @reparse_if_changed
-  @put_newly_parsed_data
+  if not sentinel.data.new_parsed then
+    @collect_letter_on_line
+    @reparse_if_changed
+    @put_newly_parsed_data
+  end
 end
 
 @put_newly_parsed_data+=
@@ -425,6 +491,8 @@ if l.linetype == LineType.TEXT then
       @count_deleted_characters_remaining
       @add_text_to_section_change
       break
+    elseif new_l.linetype == LineType.EMPTY then
+      cur = cur.next
     end
   else
     cur = sentinel
@@ -542,7 +610,6 @@ for n, _ in pairs(reparsed) do
     n.data.new_parsed = nil
   end
 end
-reparsed = {}
 
 @add_reference_to_text_changes+=
 table.insert(changes, { offset, deleted, string.len(inserted), inserted })

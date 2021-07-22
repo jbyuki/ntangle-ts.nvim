@@ -497,6 +497,13 @@ function M.attach()
                 end
               end
 
+            elseif new_l.linetype == LineType.REFERENCE then
+              local inserted_ref = {}
+              local inserted = size_inserted(new_l.str, inserted_ref)
+
+              table.insert(changes, { offset, 0, string.len(inserted), inserted })
+
+              cur = cur.next
             end
 
           elseif l.linetype == LineType.SECTION then
@@ -767,7 +774,7 @@ function M.attach()
               if cur.data.inserted then
                 local s = untangled.new("SENTINEL")
                 s.parsed = {
-                  linetype = LineType.EMPTY,
+                  linetype = LineType.TEXT,
                 }
                 local n = linkedlist.insert_after(content, cur, s)
                 new_reparsed[n] = true
@@ -820,11 +827,8 @@ function M.attach()
             cur = cur.next
           end
 
-          local new_l 
           local l = sentinel.data.parsed
-          if changed or l.linetype == LineType.EMPTY then
-            new_l = M.parse(line)
-          end
+          local new_l = M.parse(line)
 
           sentinel.data.new_parsed = new_l
 

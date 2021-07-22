@@ -398,7 +398,7 @@ EMPTY = 6,
 if cur.data.inserted then
   local s = untangled.new("SENTINEL")
   s.parsed = {
-    linetype = LineType.EMPTY,
+    linetype = LineType.TEXT,
   }
   local n = linkedlist.insert_after(content, cur, s)
   new_reparsed[n] = true
@@ -599,11 +599,8 @@ elseif l.linetype == LineType.REFERENCE then
   end
 
 @reparse_if_changed+=
-local new_l 
 local l = sentinel.data.parsed
-if changed or l.linetype == LineType.EMPTY then
-  new_l = M.parse(line)
-end
+local new_l = M.parse(line)
 
 @replace_parsed_with_new_parsed+=
 for n, _ in pairs(reparsed) do
@@ -638,7 +635,14 @@ elseif l.linetype == LineType.EMPTY then
   local new_l = cur.data.new_parsed
   if new_l.linetype == LineType.TEXT then
     @scan_for_changes_in_text
+  elseif new_l.linetype == LineType.REFERENCE then
+    @count_inserted_reference_content
+    @add_empty_to_reference_change
+    cur = cur.next
   end
+
+@add_empty_to_reference_change+=
+table.insert(changes, { offset, 0, string.len(inserted), inserted })
 
 @if_section_break_and_add_rest_if_deleted+=
 elseif l.linetype == LineType.SECTION then

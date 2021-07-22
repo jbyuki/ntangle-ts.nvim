@@ -77,6 +77,10 @@ function M.attach()
     local line = ""
     local changed = false
     while cur do
+      if cur.data.deleted or cur.data.inserted then
+        changed = true
+      end
+
       if cur.data:is_newline() and not cur.data.deleted then
         cur = cur.next
         break
@@ -84,10 +88,6 @@ function M.attach()
 
       if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
         line = line .. cur.data.sym
-      end
-
-      if cur.data.deleted or cur.data.inserted then
-        changed = true
       end
       cur = cur.next
     end
@@ -140,6 +140,10 @@ function M.attach()
           local line = ""
           local changed = false
           while cur do
+            if cur.data.deleted or cur.data.inserted then
+              changed = true
+            end
+
             if cur.data:is_newline() and not cur.data.deleted then
               cur = cur.next
               break
@@ -147,10 +151,6 @@ function M.attach()
 
             if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
               line = line .. cur.data.sym
-            end
-
-            if cur.data.deleted or cur.data.inserted then
-              changed = true
             end
             cur = cur.next
           end
@@ -201,6 +201,10 @@ function M.attach()
     local line = ""
     local changed = false
     while cur do
+      if cur.data.deleted or cur.data.inserted then
+        changed = true
+      end
+
       if cur.data:is_newline() and not cur.data.deleted then
         cur = cur.next
         break
@@ -208,10 +212,6 @@ function M.attach()
 
       if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
         line = line .. cur.data.sym
-      end
-
-      if cur.data.deleted or cur.data.inserted then
-        changed = true
       end
       cur = cur.next
     end
@@ -454,6 +454,49 @@ function M.attach()
               end
             else
               offset = scan_changes(l.str, offset, changes)
+            end
+
+          elseif l.linetype == LineType.EMPTY then
+            local new_l = cur.data.new_parsed
+            if new_l.linetype == LineType.TEXT then
+              cur = cur.next
+              while cur do
+                if cur.data.type == UNTANGLED.CHAR then
+                  if cur.data.deleted or cur.data.inserted then
+                    local inserted = ""
+                    local deleted = 0
+                    while cur do
+                      if cur.data.type == UNTANGLED.CHAR then
+                        if cur.data.deleted then
+                          deleted = deleted + 1
+                        elseif cur.data.inserted then
+                          inserted = inserted .. cur.data.sym
+                        else
+                          break
+                        end
+                      elseif cur.data.type == UNTANGLED.SENTINEL then
+                        break
+                      end
+                      cur = cur.next
+                    end
+
+                    table.insert(changes, { offset, deleted, string.len(inserted), inserted })
+
+                    offset = offset + string.len(inserted)
+                    if cur.data.type == UNTANGLED.SENTINEL then
+                      break
+                    end
+                  else
+                    if not cur.data.deleted then
+                      offset = offset + 1
+                    end
+                    cur = cur.next
+                  end
+                elseif cur.data.type == UNTANGLED.SENTINEL then
+                  break
+                end
+              end
+
             end
 
           elseif l.linetype == LineType.SECTION then
@@ -723,7 +766,7 @@ function M.attach()
               -- d d d d i i i i
               if cur.data.inserted then
                 local s = untangled.new("SENTINEL")
-                s.new_parsed = {
+                s.parsed = {
                   linetype = LineType.EMPTY,
                 }
                 local n = linkedlist.insert_after(content, cur, s)
@@ -762,6 +805,10 @@ function M.attach()
           local line = ""
           local changed = false
           while cur do
+            if cur.data.deleted or cur.data.inserted then
+              changed = true
+            end
+
             if cur.data:is_newline() and not cur.data.deleted then
               cur = cur.next
               break
@@ -770,15 +817,12 @@ function M.attach()
             if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
               line = line .. cur.data.sym
             end
-
-            if cur.data.deleted or cur.data.inserted then
-              changed = true
-            end
             cur = cur.next
           end
 
           local new_l 
-          if changed then
+          local l = sentinel.data.parsed
+          if changed or l.linetype == LineType.EMPTY then
             new_l = M.parse(line)
           end
 
@@ -1048,6 +1092,10 @@ function M.attach()
         local line = ""
         local changed = false
         while cur do
+          if cur.data.deleted or cur.data.inserted then
+            changed = true
+          end
+
           if cur.data:is_newline() and not cur.data.deleted then
             cur = cur.next
             break
@@ -1055,10 +1103,6 @@ function M.attach()
 
           if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
             line = line .. cur.data.sym
-          end
-
-          if cur.data.deleted or cur.data.inserted then
-            changed = true
           end
           cur = cur.next
         end

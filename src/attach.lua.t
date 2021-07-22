@@ -147,6 +147,10 @@ end
 local line = ""
 local changed = false
 while cur do
+  if cur.data.deleted or cur.data.inserted then
+    changed = true
+  end
+
   if cur.data:is_newline() and not cur.data.deleted then
     cur = cur.next
     break
@@ -154,10 +158,6 @@ while cur do
 
   if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
     line = line .. cur.data.sym
-  end
-
-  if cur.data.deleted or cur.data.inserted then
-    changed = true
   end
   cur = cur.next
 end
@@ -397,7 +397,7 @@ EMPTY = 6,
 -- d d d d i i i i
 if cur.data.inserted then
   local s = untangled.new("SENTINEL")
-  s.new_parsed = {
+  s.parsed = {
     linetype = LineType.EMPTY,
   }
   local n = linkedlist.insert_after(content, cur, s)
@@ -459,6 +459,7 @@ scan_changes = function(name, offset, changes)
         local l = cur.data.parsed
         @if_text_scan_line
         @if_reference_scan_recurse
+        @if_empty_scan
         @if_section_break_and_add_rest_if_deleted
       end
     end
@@ -599,7 +600,8 @@ elseif l.linetype == LineType.REFERENCE then
 
 @reparse_if_changed+=
 local new_l 
-if changed then
+local l = sentinel.data.parsed
+if changed or l.linetype == LineType.EMPTY then
   new_l = M.parse(line)
 end
 
@@ -630,6 +632,13 @@ size_inserted_from = function(cur, inserted_ref)
   end
   return content
 end
+
+@if_empty_scan+=
+elseif l.linetype == LineType.EMPTY then
+  local new_l = cur.data.new_parsed
+  if new_l.linetype == LineType.TEXT then
+    @scan_for_changes_in_text
+  end
 
 @if_section_break_and_add_rest_if_deleted+=
 elseif l.linetype == LineType.SECTION then

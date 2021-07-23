@@ -464,6 +464,12 @@ function M.attach()
                 table.insert(changes, { offset, len, 0 })
 
                 break
+              elseif new_l.linetype == LineType.EMPTY then
+                local deleted_ref = {}
+                local deleted = size_deleted(l.str, deleted_ref)
+
+                table.insert(changes, { offset, deleted, 0 })
+
               end
             else
               offset = scan_changes(l.str, offset, changes)

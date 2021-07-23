@@ -678,6 +678,9 @@ elseif l.linetype == LineType.REFERENCE then
       @count_deleted_characters_remaining
       @add_reference_to_section_changes
       break
+    elseif new_l.linetype == LineType.EMPTY then
+      @count_deleted_reference_content
+      @add_reference_to_empty_change
     end
   else
     offset = scan_changes(l.str, offset, changes)
@@ -865,6 +868,9 @@ table.insert(changes, { offset, deleted, string.len(inserted), inserted })
 
 @add_reference_to_section_changes+=
 table.insert(changes, { offset, len, 0 })
+
+@add_reference_to_empty_change+=
+table.insert(changes, { offset, deleted, 0 })
 
 @check_if_section_changed+=
 local skip_part = false

@@ -431,6 +431,7 @@ function M.attach()
                 break
               elseif new_l.linetype == LineType.EMPTY then
                 cur = cur.next
+                cur = cur.next
                 while cur do
                   if cur.data.type == UNTANGLED.CHAR then
                     if cur.data.deleted or cur.data.inserted then
@@ -680,6 +681,16 @@ function M.attach()
         local inserted = size_inserted(l.str, inserted_ref)
         content = content .. inserted
         cur = cur.next
+
+      elseif l.linetype == LineType.EMPTY then
+        cur = cur.next
+        while cur do
+          if cur.data.type == UNTANGLED.SENTINEL then
+            break
+          end
+          cur = cur.next
+        end
+
 
       elseif l.linetype == LineType.SECTION then
         break
@@ -946,6 +957,7 @@ function M.attach()
 
 
       for cur, _ in pairs(reparsed) do
+        local sentinel = cur
         local l = cur.data.parsed
         local new_l = cur.data.new_parsed
         if new_l then
@@ -1020,6 +1032,9 @@ function M.attach()
             elseif new_l.linetype == LineType.REFERENCE then
               sentinel.data.deleted = l.str
 
+            elseif new_l.linetype == LineType.EMPTY then
+              sentinel.data.deleted = l.str
+
             end
           elseif l.linetype == LineType.TEXT then
             if new_l.linetype == LineType.SECTION then
@@ -1084,6 +1099,68 @@ function M.attach()
 
             end
           elseif  l.linetype == LineType.REFERENCE then
+            if new_l.linetype == LineType.SECTION then
+              sentinel.data.inserted = new_l.str
+              if not sections_ll[new_l.str] then
+                sections_ll[new_l.str] = {}
+                local it = linkedlist.push_back(sections_ll[new_l.str], sentinel)
+                sentinel.data.new_section = it
+              else
+                if new_l.op == "-=" then
+                  if front_sections[new_l.str] then
+                    local it = linkedlist.insert_before(sections_ll[new_l.str], front_sections[new_l.str], sentinel)
+                    sentinel.data.new_section = it
+                  else
+                    local added = false
+                    local part = sections_ll[new_l.str].head
+                    while part do
+                      local section_sentinel = part.data
+                      local l = section_sentinel.data.parsed
+                      if l.op == "+=" then
+                        local it = linkedlist.insert_before(sections_ll[new_l.str], part, sentinel)
+                        sentinel.data.new_section = it
+                        added = true
+                        break
+                      end
+                      part = part.next
+                    end
+
+                    if not added then
+                      local it = linkedlist.push_back(sections_ll[new_l.str], sentinel)
+                      sentinel.data.new_section = it
+                    end
+
+                  end
+                else
+                  if back_sections[new_l.str] then
+                    local it = linkedlist.insert_after(sections_ll[new_l.str], back_sections[new_l.str], sentinel)
+                    sentinel.data.new_section = it
+                  else
+                    local added = false
+                    local part = sections_ll[new_l.str].head
+                    while part do
+                      local section_sentinel = part.data
+                      local l = section_sentinel.data.parsed
+                      if l.op == "+=" then
+                        local it = linkedlist.insert_before(sections_ll[new_l.str], part, sentinel)
+                        sentinel.data.new_section = it
+                        added = true
+                        break
+                      end
+                      part = part.next
+                    end
+
+                    if not added then
+                      local it = linkedlist.push_back(sections_ll[new_l.str], sentinel)
+                      sentinel.data.new_section = it
+                    end
+
+                  end
+                end
+              end
+
+            end
+          elseif l.linetype == LineType.EMPTY then
             if new_l.linetype == LineType.SECTION then
               sentinel.data.inserted = new_l.str
               if not sections_ll[new_l.str] then

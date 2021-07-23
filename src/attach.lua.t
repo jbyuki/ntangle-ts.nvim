@@ -527,6 +527,7 @@ if l.linetype == LineType.TEXT then
       @add_text_to_section_change
       break
     elseif new_l.linetype == LineType.EMPTY then
+      cur = cur.next
       @scan_for_changes_in_text
     end
   else
@@ -673,6 +674,7 @@ size_inserted_from = function(cur, inserted_ref)
     local l = cur.data.new_parsed or cur.data.parsed
     @if_text_add_to_size_not_deleted
     @if_reference_recursve_and_add_inserted
+    @if_empty_skip_insert
     @if_section_break
   end
   return content
@@ -819,6 +821,11 @@ elseif l.linetype == LineType.REFERENCE then
   content = content .. inserted
   cur = cur.next
 
+@if_empty_skip_insert+=
+elseif l.linetype == LineType.EMPTY then
+  cur = cur.next
+  @go_to_next_sentinel
+
 @count_inserted_reference_content+=
 local inserted_ref = {}
 local inserted = size_inserted(new_l.str, inserted_ref)
@@ -925,6 +932,7 @@ end
 
 @readjust_sections+=
 for cur, _ in pairs(reparsed) do
+  local sentinel = cur
   local l = cur.data.parsed
   local new_l = cur.data.new_parsed
   if new_l then
@@ -938,12 +946,18 @@ for cur, _ in pairs(reparsed) do
         @mark_removed_from_old_sections_ll
       elseif new_l.linetype == LineType.REFERENCE then
         @mark_removed_from_old_sections_ll
+      elseif new_l.linetype == LineType.EMPTY then
+        @mark_removed_from_old_sections_ll
       end
     elseif l.linetype == LineType.TEXT then
       if new_l.linetype == LineType.SECTION then
         @append_to_new_sections_ll
       end
     elseif  l.linetype == LineType.REFERENCE then
+      if new_l.linetype == LineType.SECTION then
+        @append_to_new_sections_ll
+      end
+    elseif l.linetype == LineType.EMPTY then
       if new_l.linetype == LineType.SECTION then
         @append_to_new_sections_ll
       end

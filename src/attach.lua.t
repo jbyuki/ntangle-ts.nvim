@@ -419,7 +419,7 @@ EMPTY = 6,
 if cur.data.inserted then
   local s = untangled.new("SENTINEL")
   s.parsed = {
-    linetype = LineType.TEXT,
+    linetype = LineType.EMPTY,
   }
   local n = linkedlist.insert_after(content, cur, s)
   new_reparsed[n] = true

@@ -214,7 +214,7 @@ function M.attach()
           single_line = {}
         end
 
-        table.insert(lines, "SENTINEL")
+        table.insert(lines, "SENTINEL " .. M.get_linetype(data.parsed.linetype))
       end
     end
 
@@ -223,6 +223,7 @@ function M.attach()
     end
 
     vim.api.nvim_buf_set_lines(internal_buf, 0, -1, true, lines)
+
   end
 
 
@@ -836,7 +837,7 @@ function M.attach()
               if cur.data.inserted then
                 local s = untangled.new("SENTINEL")
                 s.parsed = {
-                  linetype = LineType.TEXT,
+                  linetype = LineType.EMPTY,
                 }
                 local n = linkedlist.insert_after(content, cur, s)
                 new_reparsed[n] = true
@@ -1231,7 +1232,7 @@ function M.attach()
               single_line = {}
             end
 
-            table.insert(lines, "SENTINEL")
+            table.insert(lines, "SENTINEL " .. M.get_linetype(data.parsed.linetype))
           end
         end
 
@@ -1240,6 +1241,7 @@ function M.attach()
         end
 
         vim.api.nvim_buf_set_lines(internal_buf, 0, -1, true, lines)
+
       end)
 
     end
@@ -1257,6 +1259,13 @@ function untangled:is_newline()
   return self.type == UNTANGLED.CHAR and self.sym == '\n'
 end
 
+function M.get_linetype(t)
+  if t == LineType.EMPTY then return "EMPTY"
+  elseif t == LineType.SECTION then return "SECTION"
+  elseif t == LineType.REFERENCE then return "REFERENCE"
+  elseif t == LineType.TEXT then return "TEXT"
+  else return "UNKNOWN" end
+end
 function linkedlist.push_back(list, el)
 	local node = { data = el }
 

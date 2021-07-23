@@ -634,6 +634,8 @@ elseif l.linetype == LineType.REFERENCE then
       @add_reference_to_section_changes
       break
     elseif new_l.linetype == LineType.EMPTY then
+      @count_deleted_reference_content
+      @add_reference_to_empty_change
       cur = cur.next
     end
   else

@@ -486,6 +486,7 @@ scan_changes = function(name, offset, changes)
     local sec = cur
     cur = cur.next
     @check_if_section_changed
+    @check_if_no_newline_added_at_section
     if not skip_part then
       while cur do
         @go_to_next_sentinel
@@ -689,6 +690,8 @@ elseif l.linetype == LineType.EMPTY then
     @count_inserted_reference_content
     @add_empty_to_reference_change
     cur = cur.next
+  elseif new_l.linetype == LineType.SECTION then
+    break
   end
 
 @add_empty_to_reference_change+=
@@ -891,6 +894,26 @@ local inserted = size_inserted_from(cur, inserted_ref)
 if string.len(inserted) > 0 then
   table.insert(changes, { offset, 0, string.len(inserted), inserted })
 end
+
+@check_if_no_newline_added_at_section+=
+if sec.data.new_parsed and sec.data.new_parsed.linetype == LineType.SECTION then
+  cur = sec.next
+  while cur do
+    if cur.data.type == UNTANGLED.CHAR then
+      if cur.data.sym == "\n" and cur.data.inserted then
+        @newline_added_change_section
+      end
+    elseif cur.data.type == UNTANGLED.SENTINEL then
+      break
+    end
+    cur = cur.next
+  end
+  cur = sec.next
+end
+
+@newline_added_change_section+=
+table.insert(changes, { offset, 0, 1, "\n" })
+offset = offset + 1
 
 @remove_deleted_and_inserted_chars+=
 for _, n in ipairs(to_delete) do

@@ -350,6 +350,23 @@ function M.attach()
         skip_part = true
       end
 
+      if sec.data.new_parsed and sec.data.new_parsed.linetype == LineType.SECTION then
+        cur = sec.next
+        while cur do
+          if cur.data.type == UNTANGLED.CHAR then
+            if cur.data.sym == "\n" and cur.data.inserted then
+              table.insert(changes, { offset, 0, 1, "\n" })
+              offset = offset + 1
+
+            end
+          elseif cur.data.type == UNTANGLED.SENTINEL then
+            break
+          end
+          cur = cur.next
+        end
+        cur = sec.next
+      end
+
       if not skip_part then
         while cur do
           while cur do
@@ -589,6 +606,8 @@ function M.attach()
               table.insert(changes, { offset, 0, string.len(inserted), inserted })
 
               cur = cur.next
+            elseif new_l.linetype == LineType.SECTION then
+              break
             end
 
           elseif l.linetype == LineType.SECTION then

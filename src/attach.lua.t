@@ -433,6 +433,7 @@ while cur do
     end
 
   elseif cur.data.type == UNTANGLED.SENTINEL then
+    @if_only_deleted_deactivate_sentinel
     break
   end
   cur = cur.next
@@ -490,12 +491,21 @@ sentinel.data.new_parsed = {
 new_reparsed[sentinel] = true
 sentinel = n
 
+
 @delete_empty_sentinels+=
 for cur, _ in pairs(reparsed) do
   local l = cur.data.parsed
   if l.linetype == LineType.EMPTY then
     linkedlist.remove(content, cur)
   end
+end
+
+@if_only_deleted_deactivate_sentinel+=
+if only_deleted then
+  sentinel.data.new_parsed = {
+    linetype = LineType.EMPTY,
+  }
+  new_reparsed[sentinel] = true
 end
 
 @reparse_lines+=
@@ -563,6 +573,8 @@ if l.linetype == LineType.TEXT then
       @add_text_to_section_change
       break
     elseif new_l.linetype == LineType.EMPTY then
+      @count_chars_until_next_sentinel_not_inserted
+      @add_text_to_empty_change
       cur = cur.next
     end
   else
@@ -639,6 +651,9 @@ table.insert(changes, { offset, deleted, string.len(inserted), inserted })
 table.insert(changes, { offset, len, string.len(inserted), inserted })
 
 @add_text_to_section_change+=
+table.insert(changes, { offset, len, 0 })
+
+@add_text_to_empty_change+=
 table.insert(changes, { offset, len, 0 })
 
 @if_reference_scan_recurse+=

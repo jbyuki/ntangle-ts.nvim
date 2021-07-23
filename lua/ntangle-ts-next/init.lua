@@ -392,6 +392,19 @@ function M.attach()
                 break
               elseif new_l.linetype == LineType.EMPTY then
                 cur = cur.next
+                local len = 0
+                while cur do
+                  if cur.data.type == UNTANGLED.CHAR and not cur.data.inserted then
+                    len = len + string.len(cur.data.sym)
+                  elseif cur.data.type == UNTANGLED.SENTINEL then
+                    break
+                  end
+                  cur = cur.next
+                end
+
+                table.insert(changes, { offset, len, 0 })
+
+                cur = cur.next
               end
             else
               cur = sentinel
@@ -828,6 +841,7 @@ function M.attach()
                       new_reparsed[sentinel] = true
                       sentinel = n
 
+
                     else
                       n.data.new_parsed = {
                         linetype = LineType.TEXT,
@@ -854,6 +868,13 @@ function M.attach()
             end
 
           elseif cur.data.type == UNTANGLED.SENTINEL then
+            if only_deleted then
+              sentinel.data.new_parsed = {
+                linetype = LineType.EMPTY,
+              }
+              new_reparsed[sentinel] = true
+            end
+
             break
           end
           cur = cur.next

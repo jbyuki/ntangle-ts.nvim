@@ -527,7 +527,6 @@ if l.linetype == LineType.TEXT then
       @add_text_to_section_change
       break
     elseif new_l.linetype == LineType.EMPTY then
-      cur = cur.next
       @scan_for_changes_in_text
     end
   else

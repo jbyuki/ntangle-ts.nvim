@@ -433,7 +433,6 @@ function M.attach()
                 break
               elseif new_l.linetype == LineType.EMPTY then
                 cur = cur.next
-                cur = cur.next
                 while cur do
                   if cur.data.type == UNTANGLED.CHAR then
                     if cur.data.deleted or cur.data.inserted then

@@ -548,6 +548,7 @@ size_deleted_from = function(cur, deleted_ref)
     local l = cur.data.parsed
     @if_text_add_to_size_not_inserted
     @if_reference_recursve_and_add_deleted
+    @if_empty_not_inserted
     @if_section_break
   end
   return size
@@ -757,6 +758,11 @@ elseif l.linetype == LineType.REFERENCE then
   size = size + len
   cur = cur.next
 
+@if_empty_not_inserted+=
+elseif l.linetype == LineType.EMPTY then
+  @count_chars_until_next_sentinel_not_inserted
+  size = size + len
+
 @count_deleted_reference_content+=
 local deleted_ref = {}
 local deleted = size_deleted(l.str, deleted_ref)
@@ -867,6 +873,8 @@ while cur do
     size = size + string.len(inserted)
   elseif l.linetype == LineType.REFERENCE then
     size = size + size_inserted(l.str, inserted_ref)
+  elseif l.linetype == LineType.EMPTY then
+    cur = cur.next
   @if_section_break
 end
 

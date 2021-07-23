@@ -324,6 +324,8 @@ function M.attach()
             size = size + string.len(inserted)
           elseif l.linetype == LineType.REFERENCE then
             size = size + size_inserted(l.str, inserted_ref)
+          elseif l.linetype == LineType.EMPTY then
+            cur = cur.next
           elseif l.linetype == LineType.SECTION then
             break
           end
@@ -641,6 +643,20 @@ function M.attach()
         local len = size_deleted(l.str, deleted_ref)
         size = size + len
         cur = cur.next
+
+      elseif l.linetype == LineType.EMPTY then
+        cur = cur.next
+        local len = 0
+        while cur do
+          if cur.data.type == UNTANGLED.CHAR and not cur.data.inserted then
+            len = len + string.len(cur.data.sym)
+          elseif cur.data.type == UNTANGLED.SENTINEL then
+            break
+          end
+          cur = cur.next
+        end
+
+        size = size + len
 
       elseif l.linetype == LineType.SECTION then
         break

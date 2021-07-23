@@ -401,10 +401,7 @@ function M.attach()
                       cur = cur.next
                     end
                   elseif cur and cur.data.type == UNTANGLED.SENTINEL then
-                    if cur.data.new_parsed and cur.data.new_parsed.linetype == LineType.EMPTY then
-                    else
-                      break
-                    end
+                    break
                   end
                 end
 
@@ -433,7 +430,44 @@ function M.attach()
 
                 break
               elseif new_l.linetype == LineType.EMPTY then
-                cur = cur and cur.next
+                cur = cur.next
+                while cur do
+                  if cur.data.type == UNTANGLED.CHAR then
+                    if cur.data.deleted or cur.data.inserted then
+                      local inserted = ""
+                      local deleted = 0
+                      while cur do
+                        if cur.data.type == UNTANGLED.CHAR then
+                          if cur.data.deleted then
+                            deleted = deleted + 1
+                          elseif cur.data.inserted then
+                            inserted = inserted .. cur.data.sym
+                          else
+                            break
+                          end
+                        elseif cur.data.type == UNTANGLED.SENTINEL then
+                          break
+                        end
+                        cur = cur.next
+                      end
+
+                      table.insert(changes, { offset, deleted, string.len(inserted), inserted })
+
+                      offset = offset + string.len(inserted)
+                      if cur and cur.data.type == UNTANGLED.SENTINEL then
+                        break
+                      end
+                    else
+                      if not cur.data.deleted then
+                        offset = offset + 1
+                      end
+                      cur = cur.next
+                    end
+                  elseif cur and cur.data.type == UNTANGLED.SENTINEL then
+                    break
+                  end
+                end
+
               end
             else
               cur = sentinel
@@ -542,10 +576,7 @@ function M.attach()
                     cur = cur.next
                   end
                 elseif cur and cur.data.type == UNTANGLED.SENTINEL then
-                  if cur.data.new_parsed and cur.data.new_parsed.linetype == LineType.EMPTY then
-                  else
-                    break
-                  end
+                  break
                 end
               end
 

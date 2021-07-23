@@ -527,7 +527,7 @@ if l.linetype == LineType.TEXT then
       @add_text_to_section_change
       break
     elseif new_l.linetype == LineType.EMPTY then
-      cur = cur and cur.next
+      @scan_for_changes_in_text
     end
   else
     cur = sentinel
@@ -574,10 +574,7 @@ while cur do
       cur = cur.next
     end
   elseif cur and cur.data.type == UNTANGLED.SENTINEL then
-    if cur.data.new_parsed and cur.data.new_parsed.linetype == LineType.EMPTY then
-    else
-      break
-    end
+    break
   end
 end
 

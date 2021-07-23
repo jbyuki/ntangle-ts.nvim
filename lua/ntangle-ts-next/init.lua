@@ -10,6 +10,8 @@ local UNTANGLED = {
 
 local ns_debug = vim.api.nvim_create_namespace("")
 
+local internal_buf
+
 local linkedlist = {}
 
 local LineType = {
@@ -76,6 +78,7 @@ function M.attach()
     cur = cur.next
     local line = ""
     local changed = false
+    local empty = true
     while cur do
       if cur.data.deleted or cur.data.inserted then
         changed = true
@@ -83,10 +86,12 @@ function M.attach()
 
       if cur.data:is_newline() and not cur.data.deleted then
         cur = cur.next
+        empty = false
         break
       end
 
       if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
+        empty = false
         line = line .. cur.data.sym
       end
       cur = cur.next
@@ -139,6 +144,7 @@ function M.attach()
         if l.linetype == LineType.TEXT then
           local line = ""
           local changed = false
+          local empty = true
           while cur do
             if cur.data.deleted or cur.data.inserted then
               changed = true
@@ -146,10 +152,12 @@ function M.attach()
 
             if cur.data:is_newline() and not cur.data.deleted then
               cur = cur.next
+              empty = false
               break
             end
 
             if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
+              empty = false
               line = line .. cur.data.sym
             end
             cur = cur.next
@@ -187,7 +195,34 @@ function M.attach()
     local playground_lines = vim.split(playground_text, "\n")
     vim.api.nvim_buf_set_lines(playground_buf, 0, -1, true, playground_lines)
 
-    -- @display_generated_lines
+
+    local old_win = vim.api.nvim_get_current_win()
+    vim.cmd [[sp]]
+
+    internal_buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_set_current_buf(internal_buf)
+    vim.api.nvim_set_current_win(old_win)
+
+    local lines = {}
+    local single_line = {}
+    for data in linkedlist.iter(content) do
+      if data.type == UNTANGLED.CHAR then
+        table.insert(single_line, "CHAR " .. vim.inspect(data.sym))
+      elseif data.type == UNTANGLED.SENTINEL then
+        if #single_line > 0 then
+          table.insert(lines, table.concat(single_line, " "))
+          single_line = {}
+        end
+
+        table.insert(lines, "SENTINEL")
+      end
+    end
+
+    if single_line ~= "" then
+      table.insert(lines, table.concat(single_line, " "))
+    end
+
+    vim.api.nvim_buf_set_lines(internal_buf, 0, -1, true, lines)
   end
 
 
@@ -200,6 +235,7 @@ function M.attach()
     cur = cur.next
     local line = ""
     local changed = false
+    local empty = true
     while cur do
       if cur.data.deleted or cur.data.inserted then
         changed = true
@@ -207,10 +243,12 @@ function M.attach()
 
       if cur.data:is_newline() and not cur.data.deleted then
         cur = cur.next
+        empty = false
         break
       end
 
       if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
+        empty = false
         line = line .. cur.data.sym
       end
       cur = cur.next
@@ -362,7 +400,10 @@ function M.attach()
                       cur = cur.next
                     end
                   elseif cur and cur.data.type == UNTANGLED.SENTINEL then
-                    break
+                    if cur.data.new_parsed and cur.data.new_parsed.linetype == LineType.EMPTY then
+                    else
+                      break
+                    end
                   end
                 end
 
@@ -391,20 +432,7 @@ function M.attach()
 
                 break
               elseif new_l.linetype == LineType.EMPTY then
-                cur = cur.next
-                local len = 0
-                while cur do
-                  if cur.data.type == UNTANGLED.CHAR and not cur.data.inserted then
-                    len = len + string.len(cur.data.sym)
-                  elseif cur.data.type == UNTANGLED.SENTINEL then
-                    break
-                  end
-                  cur = cur.next
-                end
-
-                table.insert(changes, { offset, len, 0 })
-
-                cur = cur.next
+                cur = cur and cur.next
               end
             else
               cur = sentinel
@@ -465,11 +493,7 @@ function M.attach()
 
                 break
               elseif new_l.linetype == LineType.EMPTY then
-                local deleted_ref = {}
-                local deleted = size_deleted(l.str, deleted_ref)
-
-                table.insert(changes, { offset, deleted, 0 })
-
+                cur = cur.next
               end
             else
               offset = scan_changes(l.str, offset, changes)
@@ -512,7 +536,10 @@ function M.attach()
                     cur = cur.next
                   end
                 elseif cur and cur.data.type == UNTANGLED.SENTINEL then
-                  break
+                  if cur.data.new_parsed and cur.data.new_parsed.linetype == LineType.EMPTY then
+                  else
+                    break
+                  end
                 end
               end
 
@@ -705,6 +732,8 @@ function M.attach()
 
       local start_sentinel = sentinel
       local reparsed = {}
+      local to_insert = {}
+
       local start = cur
 
       local to_delete = {}
@@ -720,7 +749,7 @@ function M.attach()
         cur.data.deleted = true
         table.insert(to_delete, cur)
 
-        while cur do
+        while cur.next do
           cur = cur.next
           if cur.data.type == UNTANGLED.SENTINEL then
             sentinel = cur
@@ -739,148 +768,94 @@ function M.attach()
 
       end
 
-      local cur = start
-      sentinel = start_sentinel
-      local to_insert = {}
-      local lines = vim.api.nvim_buf_get_lines(0, start_row, start_row+new_row+1, false)
-      lines[1] = string.sub(lines[1], start_col+1)
-      lines[#lines] = string.sub(lines[#lines], 1, new_col)
-      if #lines < new_row+1 then
-        table.insert(lines, "")
-      end
-
-      local text = table.concat(lines, "\n")
-
-      local prev
-      if cur then
-        prev = cur.prev
-      end
-
-      while cur do
-        if not cur.data.deleted then
-          break
+      if new_byte > 0 then
+        local cur = start
+        sentinel = start_sentinel
+        local lines = vim.api.nvim_buf_get_lines(0, start_row, start_row+new_row+1, false)
+        lines[1] = string.sub(lines[1], start_col+1)
+        lines[#lines] = string.sub(lines[#lines], 1, new_col)
+        if #lines < new_row+1 then
+          table.insert(lines, "")
         end
-        prev = cur
-        cur = cur.next
-      end
-      cur = prev
 
-      local shifted = false
-      if start and cur == start.prev then
-        shifted = true
-      end
+        local text = table.concat(lines, "\n")
 
-      if not cur then
-        cur = content.tail.prev
-        shifted = true
-      end
+        local prev
+        if cur then
+          prev = cur.prev
+        end
 
-      if sentinel then
-        reparsed[sentinel] = true
-      end
-
-      for i=1,new_byte do
-        local c = string.sub(text, i, i)
-        local n = untangled.new("CHAR")
-        n.sym = c
-        n.inserted = true
-
-        if c == "\n" then
-          while cur.next do
-            if cur.next.data.type ~= UNTANGLED.CHAR or cur.next.data.sym ~= "\n" then
-              break
-            end
-            cur = cur.next
+        while cur do
+          if not cur.data.deleted then
+            break
           end
+          prev = cur
+          cur = cur.next
+        end
+        cur = prev
+
+        local shifted = false
+        if start and cur == start.prev then
+          shifted = true
         end
 
+        if not cur then
+          cur = content.tail.prev
+          shifted = true
+        end
 
-        cur = linkedlist.insert_after(content, cur, n)
-        table.insert(to_insert, cur)
+        if sentinel then
+          reparsed[sentinel] = true
+        end
 
-        if i == 1 and shifted then
-          start = cur
+        for i=1,new_byte do
+          local c = string.sub(text, i, i)
+          local n = untangled.new("CHAR")
+          n.sym = c
+          n.inserted = true
+
+          cur = linkedlist.insert_after(content, cur, n)
+          table.insert(to_insert, cur)
+
+          if i == 1 and shifted then
+            start = cur
+          end
+
         end
 
       end
-
 
       local new_reparsed = {}
       for cur, _ in pairs(reparsed) do
         local sentinel = cur
-        local only_inserted = true
-        local only_deleted = true
-        local scanned = false
-        local newline = false
         cur = cur.next
         while cur do
           if cur.data.type == UNTANGLED.CHAR then
-            if newline then
+            if cur.data.sym == "\n" then
               -- d d d d i i i i
               if cur.data.inserted then
                 local s = untangled.new("SENTINEL")
                 s.parsed = {
                   linetype = LineType.TEXT,
                 }
-                local n = linkedlist.insert_before(content, cur, s)
+                local n = linkedlist.insert_after(content, cur, s)
                 new_reparsed[n] = true
-                if only_inserted then
-                  n.data = sentinel.data
-                  sentinel.data = s
-                  sentinel = n
-                  if sentinel.data.section then
-                    local sec = sentinel.data.section
-                    sec.data = sentinel
-                  end
-
-                end
-
 
               elseif cur.data.deleted then
                 if cur.next then
                   local n = cur.next
                   if n.data.type == UNTANGLED.SENTINEL then
-                    if only_deleted then
-                      sentinel.data.new_parsed = {
-                        linetype = LineType.TEXT,
-                      }
-                      new_reparsed[sentinel] = true
-                      sentinel = n
-
-
-                    else
-                      n.data.new_parsed = {
-                        linetype = LineType.TEXT,
-                      }
-                      new_reparsed[n] = true
-                    end
+                    n.data.new_parsed = {
+                      linetype = LineType.EMPTY,
+                    }
+                    new_reparsed[n] = true
+                    break
                   end
                 end
               end
 
-              newline = false
             end
-
-            if not cur.data.inserted then
-              only_inserted = false
-            end
-
-            if not cur.data.deleted then
-              only_deleted = false
-            end
-
-            if cur.data.sym == "\n" then
-              newline = true
-            end
-
           elseif cur.data.type == UNTANGLED.SENTINEL then
-            if only_deleted then
-              sentinel.data.new_parsed = {
-                linetype = LineType.EMPTY,
-              }
-              new_reparsed[sentinel] = true
-            end
-
             break
           end
           cur = cur.next
@@ -898,6 +873,7 @@ function M.attach()
         if not sentinel.data.new_parsed then
           local line = ""
           local changed = false
+          local empty = true
           while cur do
             if cur.data.deleted or cur.data.inserted then
               changed = true
@@ -905,17 +881,26 @@ function M.attach()
 
             if cur.data:is_newline() and not cur.data.deleted then
               cur = cur.next
+              empty = false
               break
             end
 
             if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
+              empty = false
               line = line .. cur.data.sym
             end
             cur = cur.next
           end
 
           local l = sentinel.data.parsed
-          local new_l = M.parse(line)
+          local new_l
+          if empty then
+            new_l = {
+              linetype = LineType.EMPTY,
+            }
+          else
+            new_l = M.parse(line)
+          end
 
           sentinel.data.new_parsed = new_l
 
@@ -1183,6 +1168,7 @@ function M.attach()
           cur = cur.next
           local line = ""
           local changed = false
+          local empty = true
           while cur do
             if cur.data.deleted or cur.data.inserted then
               changed = true
@@ -1190,10 +1176,12 @@ function M.attach()
 
             if cur.data:is_newline() and not cur.data.deleted then
               cur = cur.next
+              empty = false
               break
             end
 
             if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
+              empty = false
               line = line .. cur.data.sym
             end
             cur = cur.next
@@ -1232,7 +1220,28 @@ function M.attach()
       vim.schedule(function()
         local lines = vim.split(playground_text, "\n")
         vim.api.nvim_buf_set_lines(playground_buf, 0, -1, true, lines)
+        local lines = {}
+        local single_line = {}
+        for data in linkedlist.iter(content) do
+          if data.type == UNTANGLED.CHAR then
+            table.insert(single_line, "CHAR " .. vim.inspect(data.sym))
+          elseif data.type == UNTANGLED.SENTINEL then
+            if #single_line > 0 then
+              table.insert(lines, table.concat(single_line, " "))
+              single_line = {}
+            end
+
+            table.insert(lines, "SENTINEL")
+          end
+        end
+
+        if single_line ~= "" then
+          table.insert(lines, table.concat(single_line, " "))
+        end
+
+        vim.api.nvim_buf_set_lines(internal_buf, 0, -1, true, lines)
       end)
+
     end
   })
 end

@@ -1317,27 +1317,29 @@ function M.attach()
 
       for n, _ in pairs(reparsed) do
         local sentinel = n
-        local virtual
-        do 
-          local l = sentinel.data.parsed
-          if l.linetype == LineType.TEXT then
-            virtual = false
-          else
-            virtual = true
-          end
-        end
-
-        local cur = n.next
-        while cur do
-          if cur.data.type == UNTANGLED.CHAR then
-            cur.data.virtual = virtual
-          elseif cur.data.type == UNTANGLED.SENTINEL then
-            if cur.data.new_parsed and cur.data.new_parsed.linetype == LineType.EMPTY then
+        if sentinel.data.parsed.linetype ~= LineType.EMPTY then
+          local virtual
+          do 
+            local l = sentinel.data.parsed
+            if l.linetype == LineType.TEXT then
+              virtual = false
             else
-              break
+              virtual = true
             end
           end
-          cur = cur.next
+
+          local cur = n.next
+          while cur do
+            if cur.data.type == UNTANGLED.CHAR then
+              cur.data.virtual = virtual
+            elseif cur.data.type == UNTANGLED.SENTINEL then
+              if cur.data.new_parsed and cur.data.new_parsed.linetype == LineType.EMPTY then
+              else
+                break
+              end
+            end
+            cur = cur.next
+          end
         end
       end
       for cur, _ in pairs(reparsed) do

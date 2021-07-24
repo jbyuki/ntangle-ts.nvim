@@ -1094,18 +1094,20 @@ end
 @update_virtual_property_characters+=
 for n, _ in pairs(reparsed) do
   local sentinel = n
-  local virtual
-  @check_if_sentinel_is_virtual
-  local cur = n.next
-  while cur do
-    if cur.data.type == UNTANGLED.CHAR then
-      cur.data.virtual = virtual
-    elseif cur.data.type == UNTANGLED.SENTINEL then
-      if cur.data.new_parsed and cur.data.new_parsed.linetype == LineType.EMPTY then
-      else
-        break
+  if sentinel.data.parsed.linetype ~= LineType.EMPTY then
+    local virtual
+    @check_if_sentinel_is_virtual
+    local cur = n.next
+    while cur do
+      if cur.data.type == UNTANGLED.CHAR then
+        cur.data.virtual = virtual
+      elseif cur.data.type == UNTANGLED.SENTINEL then
+        if cur.data.new_parsed and cur.data.new_parsed.linetype == LineType.EMPTY then
+        else
+          break
+        end
       end
+      cur = cur.next
     end
-    cur = cur.next
   end
 end

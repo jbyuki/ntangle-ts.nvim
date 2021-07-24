@@ -15,7 +15,7 @@ local lines = {}
 local single_line = {}
 for data in linkedlist.iter(content) do
   if data.type == UNTANGLED.CHAR then
-    table.insert(single_line, "CHAR " .. vim.inspect(data.sym))
+    table.insert(single_line, "CHAR " .. vim.inspect(data.sym) .. " " .. M.get_virtual(data.virtual))
   elseif data.type == UNTANGLED.SENTINEL then
     if #single_line > 0 then
       table.insert(lines, table.concat(single_line, " "))
@@ -39,4 +39,10 @@ function M.get_linetype(t)
   elseif t == LineType.REFERENCE then return "REFERENCE"
   elseif t == LineType.TEXT then return "TEXT"
   else return "UNKNOWN" end
+end
+
+@implement+=
+function M.get_virtual(v)
+  if v then return "v"
+  else return " " end
 end

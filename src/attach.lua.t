@@ -8,6 +8,8 @@ function M.attach()
   @parse_variables
   @parse_line_and_save_in_sentinel
 
+  @mark_characters_as_virtual_or_not_initial
+
   @generate_initial_tangled
 
   @clear_virtual_text_namespace
@@ -42,6 +44,7 @@ function M.attach()
       @remove_deleted_and_inserted_chars
       @remove_deleted_sections
       @replace_parsed_with_new_parsed
+      @update_virtual_property_characters
       @delete_empty_sentinels
 
       @clear_virtual_text_namespace
@@ -486,7 +489,6 @@ scan_changes = function(name, offset, changes)
     local sec = cur
     cur = cur.next
     @check_if_section_changed
-    @check_if_no_newline_added_at_section
     if not skip_part then
       while cur do
         @go_to_next_sentinel
@@ -587,7 +589,7 @@ while cur do
   if cur.data.type == UNTANGLED.CHAR then
     if cur.data.deleted then
       deleted = deleted + 1
-    elseif cur.data.inserted then
+    elseif cur.data.inserted or cur.data.virtual then
       inserted = inserted .. cur.data.sym
     else
       break
@@ -1061,3 +1063,49 @@ if sentinel.data.new_section then
 end
 sentinel.data.deleted = nil
 sentinel.data.inserted = nil
+
+@mark_characters_as_virtual_or_not_initial+=
+local cur = content.head
+local sentinel = cur
+cur = cur.next
+local virtual
+@check_if_sentinel_is_virtual
+while cur do
+  if cur.data.type == UNTANGLED.CHAR then
+    cur.data.virtual = virtual
+  elseif cur.data.type == UNTANGLED.SENTINEL then
+    sentinel = cur
+    @check_if_sentinel_is_virtual
+  end
+  cur = cur.next
+end
+
+
+@check_if_sentinel_is_virtual+=
+do 
+  local l = sentinel.data.new_parsed or sentinel.data.parsed
+  if l.linetype == LineType.TEXT then
+    virtual = false
+  else
+    virtual = true
+  end
+end
+
+@update_virtual_property_characters+=
+for n, _ in pairs(reparsed) do
+  local sec = n
+  local virtual
+  @check_if_sentinel_is_virtual
+  local cur = n.next
+  while cur do
+    if cur.data.type == UNTANGLED.CHAR then
+      cur.data.virtual = virtual
+    elseif cur.data.type == UNTANGLED.SENTINEL then
+      if cur.data.new_parsed and cur.data.new_parsed.linetype == LineType.EMPTY then
+      else
+        break
+      end
+    end
+    cur = cur.next
+  end
+end

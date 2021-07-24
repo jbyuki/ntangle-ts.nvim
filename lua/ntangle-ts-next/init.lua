@@ -123,6 +123,39 @@ function M.attach()
   end
 
 
+  local cur = content.head
+  local sentinel = cur
+  cur = cur.next
+  local virtual
+  do 
+    local l = sentinel.data.new_parsed or sentinel.data.parsed
+    if l.linetype == LineType.TEXT then
+      virtual = false
+    else
+      virtual = true
+    end
+  end
+
+  while cur do
+    if cur.data.type == UNTANGLED.CHAR then
+      cur.data.virtual = virtual
+    elseif cur.data.type == UNTANGLED.SENTINEL then
+      sentinel = cur
+      do 
+        local l = sentinel.data.new_parsed or sentinel.data.parsed
+        if l.linetype == LineType.TEXT then
+          virtual = false
+        else
+          virtual = true
+        end
+      end
+
+    end
+    cur = cur.next
+  end
+
+
+
   local generate 
   generate = function(name, lines) 
     if not sections_ll[name] then
@@ -207,7 +240,7 @@ function M.attach()
     local single_line = {}
     for data in linkedlist.iter(content) do
       if data.type == UNTANGLED.CHAR then
-        table.insert(single_line, "CHAR " .. vim.inspect(data.sym))
+        table.insert(single_line, "CHAR " .. vim.inspect(data.sym) .. " " .. M.get_virtual(data.virtual))
       elseif data.type == UNTANGLED.SENTINEL then
         if #single_line > 0 then
           table.insert(lines, table.concat(single_line, " "))
@@ -350,23 +383,6 @@ function M.attach()
         skip_part = true
       end
 
-      if sec.data.new_parsed and sec.data.new_parsed.linetype == LineType.SECTION then
-        cur = sec.next
-        while cur do
-          if cur.data.type == UNTANGLED.CHAR then
-            if cur.data.sym == "\n" and cur.data.inserted then
-              table.insert(changes, { offset, 0, 1, "\n" })
-              offset = offset + 1
-
-            end
-          elseif cur.data.type == UNTANGLED.SENTINEL then
-            break
-          end
-          cur = cur.next
-        end
-        cur = sec.next
-      end
-
       if not skip_part then
         while cur do
           while cur do
@@ -396,7 +412,7 @@ function M.attach()
                         if cur.data.type == UNTANGLED.CHAR then
                           if cur.data.deleted then
                             deleted = deleted + 1
-                          elseif cur.data.inserted then
+                          elseif cur.data.inserted or cur.data.virtual then
                             inserted = inserted .. cur.data.sym
                           else
                             break
@@ -459,7 +475,7 @@ function M.attach()
                         if cur.data.type == UNTANGLED.CHAR then
                           if cur.data.deleted then
                             deleted = deleted + 1
-                          elseif cur.data.inserted then
+                          elseif cur.data.inserted or cur.data.virtual then
                             inserted = inserted .. cur.data.sym
                           else
                             break
@@ -571,7 +587,7 @@ function M.attach()
                       if cur.data.type == UNTANGLED.CHAR then
                         if cur.data.deleted then
                           deleted = deleted + 1
-                        elseif cur.data.inserted then
+                        elseif cur.data.inserted or cur.data.virtual then
                           inserted = inserted .. cur.data.sym
                         else
                           break
@@ -1288,6 +1304,7 @@ function M.attach()
           end
           sentinel.data.deleted = nil
           sentinel.data.inserted = nil
+
         end
       end
 
@@ -1298,6 +1315,31 @@ function M.attach()
         end
       end
 
+      for n, _ in pairs(reparsed) do
+        local sec = n
+        local virtual
+        do 
+          local l = sentinel.data.new_parsed or sentinel.data.parsed
+          if l.linetype == LineType.TEXT then
+            virtual = false
+          else
+            virtual = true
+          end
+        end
+
+        local cur = n.next
+        while cur do
+          if cur.data.type == UNTANGLED.CHAR then
+            cur.data.virtual = virtual
+          elseif cur.data.type == UNTANGLED.SENTINEL then
+            if cur.data.new_parsed and cur.data.new_parsed.linetype == LineType.EMPTY then
+            else
+              break
+            end
+          end
+          cur = cur.next
+        end
+      end
       for cur, _ in pairs(reparsed) do
         local l = cur.data.parsed
         if l.linetype == LineType.EMPTY then
@@ -1372,7 +1414,7 @@ function M.attach()
         local single_line = {}
         for data in linkedlist.iter(content) do
           if data.type == UNTANGLED.CHAR then
-            table.insert(single_line, "CHAR " .. vim.inspect(data.sym))
+            table.insert(single_line, "CHAR " .. vim.inspect(data.sym) .. " " .. M.get_virtual(data.virtual))
           elseif data.type == UNTANGLED.SENTINEL then
             if #single_line > 0 then
               table.insert(lines, table.concat(single_line, " "))
@@ -1412,6 +1454,11 @@ function M.get_linetype(t)
   elseif t == LineType.REFERENCE then return "REFERENCE"
   elseif t == LineType.TEXT then return "TEXT"
   else return "UNKNOWN" end
+end
+
+function M.get_virtual(v)
+  if v then return "v"
+  else return " " end
 end
 function linkedlist.push_back(list, el)
 	local node = { data = el }

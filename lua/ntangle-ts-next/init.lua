@@ -405,7 +405,7 @@ function M.attach()
                 cur = cur.next
                 while cur do
                   if cur.data.type == UNTANGLED.CHAR then
-                    if cur.data.deleted or cur.data.inserted then
+                    if cur.data.deleted or cur.data.inserted or cur.data.virtual then
                       local inserted = ""
                       local deleted = 0
                       while cur do
@@ -468,7 +468,7 @@ function M.attach()
                 cur = cur.next
                 while cur do
                   if cur.data.type == UNTANGLED.CHAR then
-                    if cur.data.deleted or cur.data.inserted then
+                    if cur.data.deleted or cur.data.inserted or cur.data.virtual then
                       local inserted = ""
                       local deleted = 0
                       while cur do
@@ -580,7 +580,7 @@ function M.attach()
               cur = cur.next
               while cur do
                 if cur.data.type == UNTANGLED.CHAR then
-                  if cur.data.deleted or cur.data.inserted then
+                  if cur.data.deleted or cur.data.inserted or cur.data.virtual then
                     local inserted = ""
                     local deleted = 0
                     while cur do

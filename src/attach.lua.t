@@ -564,7 +564,7 @@ local len = size_deleted_from(sentinel, deleted_ref)
 cur = cur.next
 while cur do
   if cur.data.type == UNTANGLED.CHAR then
-    if cur.data.deleted or cur.data.inserted then
+    if cur.data.deleted or cur.data.inserted or cur.data.virtual then
       @scan_text_modified_range
       @add_text_to_text_changes
       offset = offset + string.len(inserted)

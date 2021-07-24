@@ -719,7 +719,10 @@ function M.attach()
           if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
             inserted = inserted .. cur.data.sym
           elseif cur.data.type == UNTANGLED.SENTINEL then
-            break
+            if cur.data.new_parsed and cur.data.new_parsed.linetype == LineType.EMPTY then
+            else
+              break
+            end
           end
           cur = cur.next
         end

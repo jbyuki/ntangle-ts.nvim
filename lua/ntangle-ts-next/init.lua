@@ -128,7 +128,7 @@ function M.attach()
   cur = cur.next
   local virtual
   do 
-    local l = sentinel.data.new_parsed or sentinel.data.parsed
+    local l = sentinel.data.parsed
     if l.linetype == LineType.TEXT then
       virtual = false
     else
@@ -142,7 +142,7 @@ function M.attach()
     elseif cur.data.type == UNTANGLED.SENTINEL then
       sentinel = cur
       do 
-        local l = sentinel.data.new_parsed or sentinel.data.parsed
+        local l = sentinel.data.parsed
         if l.linetype == LineType.TEXT then
           virtual = false
         else
@@ -1316,10 +1316,10 @@ function M.attach()
       end
 
       for n, _ in pairs(reparsed) do
-        local sec = n
+        local sentinel = n
         local virtual
         do 
-          local l = sentinel.data.new_parsed or sentinel.data.parsed
+          local l = sentinel.data.parsed
           if l.linetype == LineType.TEXT then
             virtual = false
           else

@@ -1083,7 +1083,7 @@ end
 
 @check_if_sentinel_is_virtual+=
 do 
-  local l = sentinel.data.new_parsed or sentinel.data.parsed
+  local l = sentinel.data.parsed
   if l.linetype == LineType.TEXT then
     virtual = false
   else
@@ -1093,7 +1093,7 @@ end
 
 @update_virtual_property_characters+=
 for n, _ in pairs(reparsed) do
-  local sec = n
+  local sentinel = n
   local virtual
   @check_if_sentinel_is_virtual
   local cur = n.next

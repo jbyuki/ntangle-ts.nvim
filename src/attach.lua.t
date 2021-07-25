@@ -39,6 +39,7 @@ function M.attach(callback, show_playground)
       @add_new_sentinels
 
       @reparse_lines
+      @delete_chars_which_transform_into_virtual
 
       @readjust_sections
       @send_bytes_events
@@ -1121,5 +1122,32 @@ for n, _ in pairs(reparsed) do
       end
       cur = cur.next
     end
+  end
+end
+
+@delete_chars_which_transform_into_virtual+=
+for n, _ in pairs(reparsed) do
+  local sentinel = n
+  if sentinel.data.parsed.linetype == LineType.REFERENCE or sentinel.data.parsed.linetype == LineType.SECTION then
+    local cur = sentinel.next
+    while cur do
+      @if_character_is_not_virtual_delete
+      @if_empty_skip_otherwise_break
+      cur = cur.next
+    end
+  end
+end
+
+@if_character_is_not_virtual_delete+=
+if cur.data.type == UNTANGLED.CHAR then
+  if not cur.data.virtual then
+    cur.data.deleted = true
+  end
+
+@if_empty_skip_otherwise_break+=
+elseif cur.data.type == UNTANGLED.SENTINEL then
+  if cur.data.new_parsed and cur.data.new_parsed.linetype == LineType.EMPTY then
+  else
+    break
   end
 end

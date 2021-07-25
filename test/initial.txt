@@ -1,0 +1,7 @@
+@h=
+hello
+@a
+@a
+w
+@a+=
+hello

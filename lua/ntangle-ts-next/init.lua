@@ -31,7 +31,9 @@ local playground_text = ""
 local playground_buf
 
 local M = {}
-function M.attach()
+function M.attach(callback, show_playground)
+  if show_playground == nil then show_playground = true end
+
   local lines = vim.api.nvim_buf_get_lines(0, 0, -1, true)
 
   local content = {}
@@ -213,50 +215,52 @@ function M.attach()
   for name, _ in pairs(roots) do
     local lines = {}
     generate(name, lines)
-    local old_win = vim.api.nvim_get_current_win()
-    vim.cmd [[sp]]
+    if show_playground then
+      local old_win = vim.api.nvim_get_current_win()
+      vim.cmd [[sp]]
 
-    playground_buf = vim.api.nvim_create_buf(false, true)
-    vim.api.nvim_set_current_buf(playground_buf)
-    vim.api.nvim_set_current_win(old_win)
+      playground_buf = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_set_current_buf(playground_buf)
+      vim.api.nvim_set_current_win(old_win)
 
-    playground_text = ""
-    for _, line in ipairs(lines) do
-      playground_text = playground_text .. line .. "\n"
-    end
-
-    local playground_lines = vim.split(playground_text, "\n")
-    vim.api.nvim_buf_set_lines(playground_buf, 0, -1, true, playground_lines)
-
-
-    local old_win = vim.api.nvim_get_current_win()
-    vim.cmd [[sp]]
-
-    internal_buf = vim.api.nvim_create_buf(false, true)
-    vim.api.nvim_set_current_buf(internal_buf)
-    vim.api.nvim_set_current_win(old_win)
-
-    local lines = {}
-    local single_line = {}
-    for data in linkedlist.iter(content) do
-      if data.type == UNTANGLED.CHAR then
-        table.insert(single_line, "CHAR " .. vim.inspect(data.sym) .. " " .. M.get_virtual(data.virtual))
-      elseif data.type == UNTANGLED.SENTINEL then
-        if #single_line > 0 then
-          table.insert(lines, table.concat(single_line, " "))
-          single_line = {}
-        end
-
-        table.insert(lines, "SENTINEL " .. M.get_linetype(data.parsed.linetype))
+      playground_text = ""
+      for _, line in ipairs(lines) do
+        playground_text = playground_text .. line .. "\n"
       end
+
+      local playground_lines = vim.split(playground_text, "\n")
+      vim.api.nvim_buf_set_lines(playground_buf, 0, -1, true, playground_lines)
+
+
+      local old_win = vim.api.nvim_get_current_win()
+      vim.cmd [[sp]]
+
+      internal_buf = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_set_current_buf(internal_buf)
+      vim.api.nvim_set_current_win(old_win)
+
+      local lines = {}
+      local single_line = {}
+      for data in linkedlist.iter(content) do
+        if data.type == UNTANGLED.CHAR then
+          table.insert(single_line, "CHAR " .. vim.inspect(data.sym) .. " " .. M.get_virtual(data.virtual))
+        elseif data.type == UNTANGLED.SENTINEL then
+          if #single_line > 0 then
+            table.insert(lines, table.concat(single_line, " "))
+            single_line = {}
+          end
+
+          table.insert(lines, "SENTINEL " .. M.get_linetype(data.parsed.linetype))
+        end
+      end
+
+      if single_line ~= "" then
+        table.insert(lines, table.concat(single_line, " "))
+      end
+
+      vim.api.nvim_buf_set_lines(internal_buf, 0, -1, true, lines)
+
     end
-
-    if single_line ~= "" then
-      table.insert(lines, table.concat(single_line, " "))
-    end
-
-    vim.api.nvim_buf_set_lines(internal_buf, 0, -1, true, lines)
-
   end
 
 
@@ -1283,7 +1287,9 @@ function M.attach()
       for name, _ in pairs(roots) do
         scan_changes(name, 0, changes)
       end
-      print("changes", vim.inspect(changes))
+      if show_playground then
+        print("changes", vim.inspect(changes))
+      end
 
 
       for _, n in ipairs(to_delete) do
@@ -1353,91 +1359,96 @@ function M.attach()
       end
 
 
-      vim.api.nvim_buf_clear_namespace(0, ns_debug, 0, -1)
-
-      vim.schedule(function()
-        local lnum = 0
-        local cur = content.head
-        while cur do
-          local sentinel = cur
-          cur = cur.next
-          local line = ""
-          local changed = false
-          local empty = true
-          while cur do
-            if cur.data.deleted or cur.data.inserted then
-              changed = true
-            end
-
-            if cur.data:is_newline() and not cur.data.deleted then
-              cur = cur.next
-              empty = false
-              break
-            end
-
-            if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
-              empty = false
-              line = line .. cur.data.sym
-            end
-            cur = cur.next
-          end
-
-          local linetype = "UNKNOWN"
-          local l = sentinel.data.parsed
-          if l then
-            if l.linetype == LineType.TEXT then
-              linetype = "TEXT"
-            elseif l.linetype == LineType.REFERENCE then
-              linetype = "REF"
-            elseif l.linetype == LineType.SECTION then
-              linetype = "SECTION"
-            end
-          end
-
-          vim.api.nvim_buf_set_extmark(0, ns_debug, lnum, 0, {
-            virt_text = {{line, "NonText"}, {"[" .. linetype .. "]", "WarningMsg"}}
-          })
-
-          lnum = lnum + 1
-        end
-
-      end)
-
-      for _, change in ipairs(changes) do
-        local off, del, ins, ins_text = unpack(change)
-        ins_text = ins_text or ""
-        local s1 = playground_text:sub(1, off)
-        local s2 = playground_text:sub(off+del+1)
-        playground_text = s1 .. ins_text .. s2
-
+      if callback then
+        callback(changes)
       end
 
-      vim.schedule(function()
-        local lines = vim.split(playground_text, "\n")
-        vim.api.nvim_buf_set_lines(playground_buf, 0, -1, true, lines)
-        local lines = {}
-        local single_line = {}
-        for data in linkedlist.iter(content) do
-          if data.type == UNTANGLED.CHAR then
-            table.insert(single_line, "CHAR " .. vim.inspect(data.sym) .. " " .. M.get_virtual(data.virtual))
-          elseif data.type == UNTANGLED.SENTINEL then
-            if #single_line > 0 then
-              table.insert(lines, table.concat(single_line, " "))
-              single_line = {}
+      if show_playground then
+        vim.api.nvim_buf_clear_namespace(0, ns_debug, 0, -1)
+
+        vim.schedule(function()
+          local lnum = 0
+          local cur = content.head
+          while cur do
+            local sentinel = cur
+            cur = cur.next
+            local line = ""
+            local changed = false
+            local empty = true
+            while cur do
+              if cur.data.deleted or cur.data.inserted then
+                changed = true
+              end
+
+              if cur.data:is_newline() and not cur.data.deleted then
+                cur = cur.next
+                empty = false
+                break
+              end
+
+              if cur.data.type == UNTANGLED.CHAR and not cur.data.deleted then
+                empty = false
+                line = line .. cur.data.sym
+              end
+              cur = cur.next
             end
 
-            table.insert(lines, "SENTINEL " .. M.get_linetype(data.parsed.linetype))
+            local linetype = "UNKNOWN"
+            local l = sentinel.data.parsed
+            if l then
+              if l.linetype == LineType.TEXT then
+                linetype = "TEXT"
+              elseif l.linetype == LineType.REFERENCE then
+                linetype = "REF"
+              elseif l.linetype == LineType.SECTION then
+                linetype = "SECTION"
+              end
+            end
+
+            vim.api.nvim_buf_set_extmark(0, ns_debug, lnum, 0, {
+              virt_text = {{line, "NonText"}, {"[" .. linetype .. "]", "WarningMsg"}}
+            })
+
+            lnum = lnum + 1
           end
+
+        end)
+
+        for _, change in ipairs(changes) do
+          local off, del, ins, ins_text = unpack(change)
+          ins_text = ins_text or ""
+          local s1 = playground_text:sub(1, off)
+          local s2 = playground_text:sub(off+del+1)
+          playground_text = s1 .. ins_text .. s2
+
         end
 
-        if single_line ~= "" then
-          table.insert(lines, table.concat(single_line, " "))
-        end
+        vim.schedule(function()
+          local lines = vim.split(playground_text, "\n")
+          vim.api.nvim_buf_set_lines(playground_buf, 0, -1, true, lines)
+          local lines = {}
+          local single_line = {}
+          for data in linkedlist.iter(content) do
+            if data.type == UNTANGLED.CHAR then
+              table.insert(single_line, "CHAR " .. vim.inspect(data.sym) .. " " .. M.get_virtual(data.virtual))
+            elseif data.type == UNTANGLED.SENTINEL then
+              if #single_line > 0 then
+                table.insert(lines, table.concat(single_line, " "))
+                single_line = {}
+              end
 
-        vim.api.nvim_buf_set_lines(internal_buf, 0, -1, true, lines)
+              table.insert(lines, "SENTINEL " .. M.get_linetype(data.parsed.linetype))
+            end
+          end
 
-      end)
+          if single_line ~= "" then
+            table.insert(lines, table.concat(single_line, " "))
+          end
 
+          vim.api.nvim_buf_set_lines(internal_buf, 0, -1, true, lines)
+
+        end)
+      end
     end
   })
 end

@@ -1,6 +1,8 @@
 ##ntangle-ts-next
 @implement+=
-function M.attach()
+function M.attach(callback, show_playground)
+  if show_playground == nil then show_playground = true end
+
   @get_buffer_content
   @init_untangled_content
 
@@ -47,17 +49,20 @@ function M.attach()
       @update_virtual_property_characters
       @delete_empty_sentinels
 
-      @clear_virtual_text_namespace
-      vim.schedule(function()
-        @show_line_as_virtual_text
-      end)
+      @pass_changes_to_callback
 
-      @apply_changes_to_playground
-      vim.schedule(function()
-        @refresh_playground_text
-        @display_internal_state
-      end)
+      if show_playground then
+        @clear_virtual_text_namespace
+        vim.schedule(function()
+          @show_line_as_virtual_text
+        end)
 
+        @apply_changes_to_playground
+        vim.schedule(function()
+          @refresh_playground_text
+          @display_internal_state
+        end)
+      end
     end
   })
 end
@@ -202,11 +207,13 @@ end
 for name, _ in pairs(roots) do
   local lines = {}
   generate(name, lines)
-  @create_playground
-  @display_generated_into_playground
+  if show_playground then
+    @create_playground
+    @display_generated_into_playground
 
-  @create_internal_state
-  @display_internal_state
+    @create_internal_state
+    @display_internal_state
+  end
 end
 
 @go_to_next_sentinel+=
@@ -509,7 +516,9 @@ local changes = {}
 for name, _ in pairs(roots) do
   scan_changes(name, 0, changes)
 end
-print("changes", vim.inspect(changes))
+if show_playground then
+  print("changes", vim.inspect(changes))
+end
 
 @if_text_scan_line+=
 if l.linetype == LineType.TEXT then

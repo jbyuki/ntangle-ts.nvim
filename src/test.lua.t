@@ -15,6 +15,7 @@ local initial_state = {
   "hello",
   "hello",
   "w",
+  "",
 }
 
 @check_function
@@ -31,6 +32,9 @@ local initial_state = {
 
 @test_delete_last_line
 @test_insert_last_line
+
+@insert_newline_before_section
+@insert_new_ref
 
 print("Done.")
 
@@ -102,7 +106,7 @@ vim.api.nvim_set_current_buf(buf)
 vim.api.nvim_buf_set_lines(buf, 0, -1, true, initial)
 
 @attach_to_api+=
-local state = table.concat(initial_state, "\n") .. "\n"
+local state = table.concat(initial_state, "\n")
 require"ntangle-ts-next".attach(function(changes)
   @do_changes_to_state
 end, false)
@@ -231,6 +235,57 @@ check("delete last line", function(buf)
 
 end,
   {
+    "hello",
+    "w",
+    "",
+})
+
+@test_insert_last_line+=
+check("insert last line", function(buf)
+  vim.api.nvim_buf_set_text(0, 6, 5, 6, 5, { "", "" })
+  vim.api.nvim_buf_set_text(0, 7, 0, 7, 0, { "h" })
+  vim.api.nvim_buf_set_text(0, 7, 1, 7, 1, { "i" })
+
+end,
+  {
+    "hello",
+    "hello",
+    "hi",
+    "hello",
+    "hi",
+    "w",
+    "",
+})
+
+@insert_newline_before_section+=
+check("insert newline before section", function(buf)
+  vim.api.nvim_buf_set_text(0, 5, 0, 5, 0, { "", "" })
+end,
+  {
+    "hello",
+    "hello",
+    "hello",
+    "w",
+    "",
+    "",
+})
+
+@insert_new_ref+=
+check("insert new reference", function(buf)
+  vim.api.nvim_buf_set_text(0, 4, 0, 4, 0, { "", "" })
+  vim.api.nvim_buf_set_text(0, 4, 0, 4, 0, { "@" })
+  vim.api.nvim_buf_set_text(0, 4, 1, 4, 1, { "b" })
+  vim.api.nvim_buf_set_text(0, 4, 2, 4, 2, { "+" })
+  vim.api.nvim_buf_set_text(0, 4, 3, 4, 3, { "=" })
+  vim.api.nvim_buf_set_text(0, 4, 0, 4, 0, { "", "" })
+  vim.api.nvim_buf_set_text(0, 4, 0, 4, 0, { "@" })
+  vim.api.nvim_buf_set_text(0, 4, 1, 4, 1, { "b" })
+
+end,
+  {
+    "hello",
+    "hello",
+    "hello",
     "hello",
     "w",
     "",

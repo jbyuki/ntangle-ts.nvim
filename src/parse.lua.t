@@ -113,7 +113,7 @@ else
 end
 sentinel.data.section = it
 
-@parse_variables+=
+@script_variables+=
 local roots = {}
 
 @if_root_section_add_ref+=

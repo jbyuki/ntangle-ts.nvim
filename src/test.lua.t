@@ -40,6 +40,7 @@ local initial_state = {
 @delete_section_line
 
 @test_circular_references
+@test_rename_root
 
 print("Done.")
 
@@ -57,7 +58,7 @@ local function check(desc, fn, result)
   @create_buf
   @set_initial_state
   @attach_to_api
-  fn(buf)
+  local success = fn(buf) or true
 
   local state_lines = vim.split(state, "\n")
   local success = true
@@ -353,6 +354,23 @@ check("test circular references", function(buf)
   vim.api.nvim_buf_set_text(0, 7, 0, 7, 0, { "@" })
   vim.api.nvim_buf_set_text(0, 7, 1, 7, 1, { "a" })
 
+end,
+  {
+    "hello",
+    "hello",
+    "hello",
+    "w",
+    "",
+})
+
+@test_rename_root+=
+check("test rename root", function(buf)
+  vim.api.nvim_buf_set_text(0, 0, 2, 0, 2, { "a" })
+  local result = require"ntangle-ts-next".get_roots()
+  if #result ~= 1 or result[1] ~= "ha" then
+    print("error", vim.inspect(result))
+    return false
+  end
 end,
   {
     "hello",

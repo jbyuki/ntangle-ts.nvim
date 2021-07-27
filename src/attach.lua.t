@@ -923,6 +923,7 @@ while cur do
       size = size + size_deleted(l.str, deleted_ref, stack)
       table.remove(stack)
     end
+    cur = cur.next
   elseif l.linetype == LineType.EMPTY then
     cur = cur.next
   @if_section_break
@@ -1019,6 +1020,7 @@ for cur, _ in pairs(reparsed) do
         if new_l.str ~= l.str then
           @mark_removed_from_old_sections_ll
           @append_to_new_sections_ll
+          @if_root_append_to_root_list
         end
       elseif new_l.linetype == LineType.TEXT then
         @mark_removed_from_old_sections_ll
@@ -1030,14 +1032,17 @@ for cur, _ in pairs(reparsed) do
     elseif l.linetype == LineType.TEXT then
       if new_l.linetype == LineType.SECTION then
         @append_to_new_sections_ll
+        @if_root_append_to_root_list
       end
     elseif  l.linetype == LineType.REFERENCE then
       if new_l.linetype == LineType.SECTION then
         @append_to_new_sections_ll
+        @if_root_append_to_root_list
       end
     elseif l.linetype == LineType.EMPTY then
       if new_l.linetype == LineType.SECTION then
         @append_to_new_sections_ll
+        @if_root_append_to_root_list
       end
     end
   end
@@ -1096,6 +1101,7 @@ for cur, _ in pairs(reparsed) do
   local l = sentinel.data.parsed
   local new_l = sentinel.data.new_parsed
   if l.linetype == LineType.SECTION or new_l.linetype == LineType.SECTION then
+    @if_root_remove_roots_list
     @remove_from_old_section_list
   end
 end
@@ -1189,3 +1195,15 @@ end
 
 @clear_deleted_property+=
 cur.data.deleted = nil
+
+@if_root_append_to_root_list+=
+if new_l.op == "=" then
+  roots[new_l.str] = true
+end
+
+@if_root_remove_roots_list+=
+if l.linetype == LineType.SECTION and l.op == "=" then
+  if sentinel.data.deleted then
+    roots[sentinel.data.deleted] = nil
+  end
+end

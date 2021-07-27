@@ -27,10 +27,15 @@ local LineType = {
 
 }
 
+local roots = {}
+
 local playground_text = ""
 local playground_buf
 
 local M = {}
+function M.get_roots()
+  return vim.tbl_keys(roots)
+end
 function M.attach(callback, show_playground)
   if show_playground == nil then show_playground = true end
 
@@ -70,8 +75,6 @@ function M.attach(callback, show_playground)
   end
 
   local sections_ll = {}
-
-  local roots = {}
 
   local cur = content.head
   assert(cur.data.type == UNTANGLED.SENTINEL, "First element in untangled must be a sentinel")
@@ -366,6 +369,7 @@ function M.attach(callback, show_playground)
               size = size + size_deleted(l.str, deleted_ref, stack)
               table.remove(stack)
             end
+            cur = cur.next
           elseif l.linetype == LineType.EMPTY then
             cur = cur.next
           elseif l.linetype == LineType.SECTION then
@@ -1159,6 +1163,10 @@ function M.attach(callback, show_playground)
                   end
                 end
 
+                if new_l.op == "=" then
+                  roots[new_l.str] = true
+                end
+
               end
             elseif new_l.linetype == LineType.TEXT then
               sentinel.data.deleted = l.str
@@ -1231,6 +1239,10 @@ function M.attach(callback, show_playground)
                 end
               end
 
+              if new_l.op == "=" then
+                roots[new_l.str] = true
+              end
+
             end
           elseif  l.linetype == LineType.REFERENCE then
             if new_l.linetype == LineType.SECTION then
@@ -1291,6 +1303,10 @@ function M.attach(callback, show_playground)
 
                   end
                 end
+              end
+
+              if new_l.op == "=" then
+                roots[new_l.str] = true
               end
 
             end
@@ -1355,6 +1371,10 @@ function M.attach(callback, show_playground)
                 end
               end
 
+              if new_l.op == "=" then
+                roots[new_l.str] = true
+              end
+
             end
           end
         end
@@ -1383,6 +1403,11 @@ function M.attach(callback, show_playground)
         local l = sentinel.data.parsed
         local new_l = sentinel.data.new_parsed
         if l.linetype == LineType.SECTION or new_l.linetype == LineType.SECTION then
+          if l.linetype == LineType.SECTION and l.op == "=" then
+            if sentinel.data.deleted then
+              roots[sentinel.data.deleted] = nil
+            end
+          end
           if sentinel.data.deleted then
             linkedlist.remove(sections_ll[sentinel.data.deleted], sentinel.data.section)
           end
@@ -1420,6 +1445,7 @@ function M.attach(callback, show_playground)
             if cur.data.type == UNTANGLED.CHAR then
               cur.data.virtual = virtual
               cur.data.deleted = nil
+
             elseif cur.data.type == UNTANGLED.SENTINEL then
               if cur.data.new_parsed and cur.data.new_parsed.linetype == LineType.EMPTY then
               else
@@ -1442,6 +1468,7 @@ function M.attach(callback, show_playground)
       if callback then
         callback(changes)
       end
+
 
       if show_playground then
         vim.api.nvim_buf_clear_namespace(0, ns_debug, 0, -1)

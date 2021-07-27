@@ -26,7 +26,7 @@ byte range transformation to line transformation.
 * [x] Modify reference line -> section line
 * [x] Get inserted text
 * [x] Mitigate circular references
-* [ ] Add/Remove root sections
+* [x] Add/Remove root sections
 * [ ] Handle tabs
 * [ ] row, col for modifications
 * [ ] Cache sections (unmodified not recomputed)

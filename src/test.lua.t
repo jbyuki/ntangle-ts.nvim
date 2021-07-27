@@ -17,7 +17,6 @@ local initial_state = {
   "w",
   "",
 }
-
 @check_function
 
 @test_text_to_text
@@ -39,6 +38,8 @@ local initial_state = {
 @delete_text_line
 @delete_ref_line
 @delete_section_line
+
+@test_circular_references
 
 print("Done.")
 
@@ -343,5 +344,20 @@ end,
     "hello",
     "w",
     "hello",
+    "",
+})
+
+@test_circular_references+=
+check("test circular references", function(buf)
+  vim.api.nvim_buf_set_text(0, 6, 5, 6, 5, { "", "" })
+  vim.api.nvim_buf_set_text(0, 7, 0, 7, 0, { "@" })
+  vim.api.nvim_buf_set_text(0, 7, 1, 7, 1, { "a" })
+
+end,
+  {
+    "hello",
+    "hello",
+    "hello",
+    "w",
     "",
 })

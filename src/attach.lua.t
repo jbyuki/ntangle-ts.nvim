@@ -488,7 +488,7 @@ sentinel.data.new_parsed = new_l
 
 @attach_functions+=
 local scan_changes
-scan_changes = function(name, offset, changes)
+scan_changes = function(name, offset, changes, stack)
   if not sections_ll[name] then
     return offset
   end
@@ -515,7 +515,8 @@ end
 @send_bytes_events+=
 local changes = {}
 for name, _ in pairs(roots) do
-  scan_changes(name, 0, changes)
+  local stack = { name }
+  scan_changes(name, 0, changes, stack)
 end
 if show_playground then
   print("changes", vim.inspect(changes))
@@ -552,7 +553,7 @@ if l.linetype == LineType.TEXT then
 local size_deleted_from
 
 @attach_functions+=
-size_deleted_from = function(cur, deleted_ref)
+size_deleted_from = function(cur, deleted_ref, stack)
   local size = 0
   while cur do
     @go_to_next_sentinel
@@ -568,7 +569,7 @@ end
 
 @count_deleted_characters_remaining+=
 local deleted_ref = {}
-local len = size_deleted_from(sentinel, deleted_ref)
+local len = size_deleted_from(sentinel, deleted_ref, stack)
 
 @scan_for_changes_in_text+=
 cur = cur.next
@@ -650,7 +651,11 @@ elseif l.linetype == LineType.REFERENCE then
       cur = cur.next
     end
   else
-    offset = scan_changes(l.str, offset, changes)
+    if not vim.tbl_contains(stack, l.str) then
+      table.insert(stack, l.str)
+      offset = scan_changes(l.str, offset, changes, stack)
+        table.remove(stack)
+    end
   end
 
 @reparse_if_changed+=
@@ -679,7 +684,7 @@ table.insert(changes, { offset, deleted, string.len(inserted), inserted })
 local size_inserted_from
 
 @attach_functions+=
-size_inserted_from = function(cur, inserted_ref)
+size_inserted_from = function(cur, inserted_ref, stack)
   local content = ""
   while cur do
     @go_to_next_sentinel
@@ -714,7 +719,7 @@ elseif l.linetype == LineType.SECTION then
   if cur.data.deleted and not cur.data.inserted then
     local new_l = cur.data.new_parsed
     local inserted_ref = {}
-    local inserted = size_inserted_from(cur, inserted_ref)
+    local inserted = size_inserted_from(cur, inserted_ref, stack)
     @add_changes_newly_added_part
   end
   break
@@ -730,7 +735,7 @@ end
 local size_deleted
 
 @attach_functions+=
-size_deleted = function(name, deleted_ref) 
+size_deleted = function(name, deleted_ref, stack) 
   if not sections_ll[name] then
     return 0
   end
@@ -742,7 +747,7 @@ size_deleted = function(name, deleted_ref)
   local size = 0
   for cur in linkedlist.iter(sections_ll[name]) do
     cur = cur.next
-    size = size + size_deleted_from(cur, deleted_ref)
+    size = size + size_deleted_from(cur, deleted_ref, stack)
   end
   deleted_ref[name] = size
   return size
@@ -768,8 +773,13 @@ end
 
 @if_reference_recursve_and_add_deleted+=
 elseif l.linetype == LineType.REFERENCE then
-  local len = size_deleted(l.str, deleted_ref)
-  size = size + len
+  local deleted_ref = {}
+  if not vim.tbl_contains(stack, l.str) then
+    table.insert(stack, l.str)
+    size = size + size_deleted(l.str, deleted_ref, stack)
+    table.remove(stack)
+  end
+
   cur = cur.next
 
 @if_empty_not_inserted+=
@@ -779,13 +789,18 @@ elseif l.linetype == LineType.EMPTY then
 
 @count_deleted_reference_content+=
 local deleted_ref = {}
-local deleted = size_deleted(l.str, deleted_ref)
+local deleted = 0
+if not vim.tbl_contains(stack, l.str) then
+  table.insert(stack, l.str)
+  deleted = size_deleted(l.str, deleted_ref, stack)
+  table.remove(stack)
+end
 
 @attach_functions-=
 local size_inserted
 
 @attach_functions+=
-size_inserted = function(name, inserted_ref) 
+size_inserted = function(name, inserted_ref, stack) 
   if not sections_ll[name] then
     return ""
   end
@@ -798,7 +813,7 @@ size_inserted = function(name, inserted_ref)
   for cur in linkedlist.iter(sections_ll[name]) do
     if not cur.data.deleted or cur.data.deleted ~= name then
       cur = cur.next
-      content = content .. size_inserted_from(cur, inserted_ref)
+      content = content .. size_inserted_from(cur, inserted_ref, stack)
     end
   end
   inserted_ref[name] = content
@@ -840,7 +855,14 @@ end
 @if_reference_recursve_and_add_inserted+=
 elseif l.linetype == LineType.REFERENCE then
   local inserted_ref = {}
-  local inserted = size_inserted(l.str, inserted_ref)
+  local inserted = ""
+
+  if not vim.tbl_contains(stack, l.str) then
+    table.insert(stack, l.str)
+    inserted = size_inserted(l.str, inserted_ref, stack)
+    table.remove(stack)
+  end
+
   content = content .. inserted
   cur = cur.next
 
@@ -851,7 +873,13 @@ elseif l.linetype == LineType.EMPTY then
 
 @count_inserted_reference_content+=
 local inserted_ref = {}
-local inserted = size_inserted(new_l.str, inserted_ref)
+local inserted = ""
+if not vim.tbl_contains(stack, new_l.str) then
+  table.insert(stack, new_l.str)
+  inserted = size_inserted(new_l.str, inserted_ref, stack)
+  table.remove(stack)
+end
+
 
 @add_reference_changes+=
 table.insert(changes, { offset, deleted, string.len(inserted), inserted })
@@ -889,7 +917,12 @@ while cur do
     @count_chars_until_next_sentinel_not_deleted
     size = size + string.len(inserted)
   elseif l.linetype == LineType.REFERENCE then
-    size = size + size_inserted(l.str, inserted_ref)
+    local deleted_ref = {}
+    if not vim.tbl_contains(stack, l.str) then
+      table.insert(stack, l.str)
+      size = size + size_deleted(l.str, deleted_ref, stack)
+      table.remove(stack)
+    end
   elseif l.linetype == LineType.EMPTY then
     cur = cur.next
   @if_section_break
@@ -903,7 +936,7 @@ end
 @compute_section_part_size_inserted+=
 cur = cur.next
 local inserted_ref = {}
-local inserted = size_inserted_from(cur, inserted_ref)
+local inserted = size_inserted_from(cur, inserted_ref, stack)
 
 @add_inserted_section_part_changes+=
 if string.len(inserted) > 0 then

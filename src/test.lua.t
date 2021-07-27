@@ -36,6 +36,10 @@ local initial_state = {
 @insert_newline_before_section
 @insert_new_ref
 
+@delete_text_line
+@delete_ref_line
+@delete_section_line
+
 print("Done.")
 
 @do_changes_to_state+=
@@ -270,6 +274,23 @@ end,
     "",
 })
 
+@insert_newline_before_section+=
+check("insert newline before section and after reference", function(buf)
+  vim.api.nvim_buf_set_text(0, 4, 0, 4, 0, { "", "" })
+  vim.api.nvim_buf_set_text(0, 4, 0, 4, 0, { "@" })
+  vim.api.nvim_buf_set_text(0, 4, 1, 4, 1, { "b" })
+  vim.api.nvim_buf_set_text(0, 4, 2, 4, 2, { "+" })
+  vim.api.nvim_buf_set_text(0, 4, 3, 4, 3, { "=" })
+  vim.api.nvim_buf_set_text(0, 4, 0, 4, 0, { "", "" })
+end,
+  {
+    "hello",
+    "hello",
+    "hello",
+    "",
+    "",
+})
+
 @insert_new_ref+=
 check("insert new reference", function(buf)
   vim.api.nvim_buf_set_text(0, 4, 0, 4, 0, { "", "" })
@@ -286,7 +307,41 @@ end,
     "hello",
     "hello",
     "hello",
+    "w",
+    "",
+})
+
+@delete_text_line+=
+check("delete text line", function(buf)
+  vim.api.nvim_buf_set_text(0, 1, 0, 2, 0, {})
+end,
+  {
+    "hello",
     "hello",
     "w",
+    "",
+})
+
+@delete_ref_line+=
+check("delete reference line", function(buf)
+  vim.api.nvim_buf_set_text(0, 3, 0, 4, 0, {})
+
+end,
+  {
+    "hello",
+    "hello",
+    "w",
+    "",
+})
+
+@delete_section_line+=
+check("delete section line", function(buf)
+  vim.api.nvim_buf_set_text(0, 5, 0, 6, 0, {})
+
+end,
+  {
+    "hello",
+    "w",
+    "hello",
     "",
 })

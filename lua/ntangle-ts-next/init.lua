@@ -1014,7 +1014,8 @@ function M.attach(callback, show_playground)
 
       for n, _ in pairs(reparsed) do
         local sentinel = n
-        if sentinel.data.parsed.linetype == LineType.REFERENCE or sentinel.data.parsed.linetype == LineType.SECTION then
+        local new_l = sentinel.data.new_parsed
+        if new_l and new_l.linetype == LineType.REFERENCE or new_l.linetype == LineType.SECTION then
           local cur = sentinel.next
           while cur do
             if cur.data.type == UNTANGLED.CHAR then
@@ -1028,6 +1029,7 @@ function M.attach(callback, show_playground)
                 break
               end
             end
+
             cur = cur.next
           end
         end
@@ -1362,6 +1364,7 @@ function M.attach(callback, show_playground)
           while cur do
             if cur.data.type == UNTANGLED.CHAR then
               cur.data.virtual = virtual
+              cur.data.deleted = nil
             elseif cur.data.type == UNTANGLED.SENTINEL then
               if cur.data.new_parsed and cur.data.new_parsed.linetype == LineType.EMPTY then
               else

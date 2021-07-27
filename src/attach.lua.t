@@ -1114,6 +1114,7 @@ for n, _ in pairs(reparsed) do
     while cur do
       if cur.data.type == UNTANGLED.CHAR then
         cur.data.virtual = virtual
+        @clear_deleted_property
       elseif cur.data.type == UNTANGLED.SENTINEL then
         if cur.data.new_parsed and cur.data.new_parsed.linetype == LineType.EMPTY then
         else
@@ -1128,7 +1129,8 @@ end
 @delete_chars_which_transform_into_virtual+=
 for n, _ in pairs(reparsed) do
   local sentinel = n
-  if sentinel.data.parsed.linetype == LineType.REFERENCE or sentinel.data.parsed.linetype == LineType.SECTION then
+  local new_l = sentinel.data.new_parsed
+  if new_l and new_l.linetype == LineType.REFERENCE or new_l.linetype == LineType.SECTION then
     local cur = sentinel.next
     while cur do
       @if_character_is_not_virtual_delete
@@ -1151,3 +1153,6 @@ elseif cur.data.type == UNTANGLED.SENTINEL then
     break
   end
 end
+
+@clear_deleted_property+=
+cur.data.deleted = nil

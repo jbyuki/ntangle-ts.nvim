@@ -1,14 +1,18 @@
 ##ntangle-ts
 @implement+=
 function M.attach()
+  @check_that_not_disabled
   @override_if_not_done
 
   @get_current_buffer
 
   @get_language_extension
+
   @require_language
 	@create_parser_for_buffer
 	@create_highlighter_for_buffer
+
+
 	-- @set_filetype_to_original_language
   @enable_filetype_indent
 
@@ -17,8 +21,10 @@ function M.attach()
 
   local lookup = {}
 
+
   @buffer_variables
   @insert_line_function
+
 
   if buf_vars[bufname] then
     @restore_buffer_variables
@@ -27,8 +33,10 @@ function M.attach()
     @save_new_buffer_variables
   end
 
+
   @update_line_number_untangled
   @generate_tangled_code
+
 
   @fill_backbuf_if_not_done
   @save_buffer_language
@@ -40,9 +48,12 @@ function M.attach()
   @init_text_state
   @send_init_text_to_callbacks
 
+
   vim.api.nvim_buf_attach(buf, true, {
     on_bytes = function(...)
       local _, _, _, start_row, start_col, _, end_row, end_col, _, new_end_row, new_end_col, _ = unpack({...})
+      @detach_if_told_so
+
       @do_text_transformation
       @correct_byte_range
 

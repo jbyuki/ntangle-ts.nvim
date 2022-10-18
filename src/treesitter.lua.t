@@ -6,5 +6,8 @@ local ext = vim.fn.fnamemodify(bufname, ":e:e:r")
 @create_parser_for_buffer+=
 local parser = vim.treesitter.get_parser(buf, ext)
 
+@script_variables+=
+local hls = {}
+
 @create_highlighter_for_buffer+=
-vim.treesitter.highlighter.new(parser, {})
+hls[buf] = vim.treesitter.highlighter.new(parser, {})

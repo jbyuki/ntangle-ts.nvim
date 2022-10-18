@@ -9,6 +9,10 @@ local overriden = false
 
 local states = {}
 
+local detach_this = {}
+
+local enabled = true
+
 local getLinetype
 
 local tangleRec
@@ -45,6 +49,8 @@ local init_events = {}
 
 local deinit_events = {}
 
+local hls = {}
+
 local linkedlist = {}
 
 local function get_line(buf, row)
@@ -58,6 +64,9 @@ end
 
 local M = {}
 function M.attach()
+  if not enabled then
+    return
+  end
   if not overriden then
     M.override()
     overriden = true
@@ -69,6 +78,7 @@ function M.attach()
 
   local bufname = vim.api.nvim_buf_get_name(0)
   local ext = vim.fn.fnamemodify(bufname, ":e:e:r")
+
 
   if not vim._ts_has_language(ext) then
     local fname = 'parser/' .. ext .. '.*'
@@ -86,7 +96,9 @@ function M.attach()
 
 	local parser = vim.treesitter.get_parser(buf, ext)
 
-	vim.treesitter.highlighter.new(parser, {})
+	hls[buf] = vim.treesitter.highlighter.new(parser, {})
+
+
 	-- @set_filetype_to_original_language
   vim.api.nvim_command("set ei=FileType")
   vim.api.nvim_command("set ft=" .. ext)
@@ -101,6 +113,7 @@ function M.attach()
   -- @enable_foldexpr_for_ntangle
 
   local lookup = {}
+
 
   local buf_asm
 
@@ -982,6 +995,7 @@ function M.attach()
     return start_buf, end_buf, insert_after
   end
 
+
   if buf_vars[bufname] then
     buf_asm = buf_vars[bufname].buf_asm
     start_buf = buf_vars[bufname].start_buf
@@ -1072,6 +1086,7 @@ function M.attach()
 
   end
 
+
   for buf, sent in pairs(bufs_set) do
     local start_buf, end_buf = unpack(sent)
     local lnum = 1
@@ -1101,6 +1116,7 @@ function M.attach()
 
     root.sources = table.concat(source_lines, "\n")
   end
+
 
   backbuf[buf] = true
 
@@ -1176,9 +1192,16 @@ function M.attach()
   init_events = {}
 
 
+
   vim.api.nvim_buf_attach(buf, true, {
     on_bytes = function(...)
       local _, _, _, start_row, start_col, _, end_row, end_col, _, new_end_row, new_end_col, _ = unpack({...})
+      if detach_this[buf] then
+        detach_this[buf] = nil
+        return true
+      end
+
+
       local state = states[bufname]
 
       if end_row == 0 then
@@ -2181,6 +2204,26 @@ function M.print_untangled()
     end
   end
 end
+function M.detach()
+  local buf = vim.api.nvim_get_current_buf()
+  detach_this[buf] = true
+
+  if hls[buf]  then
+    hls[buf]:destroy()
+    hls[buf] = nil
+  end
+  backbuf[buf] = nil
+
+end
+
+function M.enable()
+  enabled = true
+end
+
+function M.disable()
+  enabled = false
+end
+
 function M.lookup(buf, lnum)
   local lookup = backlookup[buf]
   local info = lookup[lnum]
@@ -2558,11 +2601,11 @@ function M._on_line(...)
 
       local hl_group
       if linetype == LineType.REFERENCE then
-        hl_group = "TSString"
+        hl_group = "@string"
       elseif linetype == LineType.ASSEMBLY then
-        hl_group = "TSString"
+        hl_group = "@string"
       else
-        hl_group = "TSString"
+        hl_group = "@string"
       end
 
       vim.api.nvim_buf_set_extmark(buf, ns, line, 0, { 

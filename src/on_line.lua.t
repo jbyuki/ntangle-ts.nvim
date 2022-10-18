@@ -119,9 +119,9 @@ end
 @decide_hl_group_with_linetype+=
 local hl_group
 if linetype == LineType.REFERENCE then
-  hl_group = "TSString"
+  hl_group = "@string"
 elseif linetype == LineType.ASSEMBLY then
-  hl_group = "TSString"
+  hl_group = "@string"
 else
-  hl_group = "TSString"
+  hl_group = "@string"
 end

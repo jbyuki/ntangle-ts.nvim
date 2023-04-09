@@ -40,6 +40,9 @@ function M.attach(buf)
 				local untangled = tangled_it.data.untangled
 
 				local lnum
+				local untangled_len = #untangled.data.str
+				local tangled_len = #tangled_it.data.str
+
 				for part in ntangle.linkedlist.iter(tangled.parts_ll) do
 					local part_lnum = 0
 					local it = part.start_part
@@ -58,12 +61,15 @@ function M.attach(buf)
 				end
 
 				if lnum then
+					local drow = (details.end_row or start_row) - start_row
+					local dcol = (details.end_col or start_col) - start_col
+					start_row = lnum
+					start_col = start_col - (tangled_len - untangled_len )
 					if details.end_row then
-						local drow = details.end_row - start_row
-						start_row = lnum
 						details.end_row = lnum+drow
-					else
-						start_row = lnum
+					end
+					if details.end_col then
+						details.end_col = start_col+dcol
 					end
 				else
 					start_row = nil

@@ -159,7 +159,7 @@ function M.attach(buf)
 			if jumplines then break end
 		end
 
-		if #jumplines >= 1 then
+		if jumplines and #jumplines >= 1 then
 			local jumpline = jumplines[1]
 			if jumpline.data.lnum then
 				return scratch, jumpline.data.lnum

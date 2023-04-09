@@ -156,22 +156,12 @@ end
 @extmark_callback+=
 vim.api.nvim_buf_attach(scratch, 0, {
   on_extmark = function(_, _, info)
-		-- vim.schedule(function()
-			-- print(vim.inspect(info))
-		-- end)
 		local tangled = tangled_content[buf]
 		local start_row, start_col, details = unpack(info)
 		@convert_back_to_untangled_in_tangled
 
 		if details.end_row and details.end_row ~= start_row then
 			return true
-		end
-
-		if start_row == 8 then
-			local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
-			vim.schedule(function()
-				print(vim.inspect(lines))
-			end)
 		end
 
 		if start_row then

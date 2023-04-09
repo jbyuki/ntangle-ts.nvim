@@ -18,6 +18,9 @@ function M.attach(buf)
 
 	vim.api.nvim_buf_attach(scratch, 0, {
 	  on_extmark = function(_, _, info)
+			-- vim.schedule(function()
+				-- print(vim.inspect(info))
+			-- end)
 			local tangled = tangled_content[buf]
 			local start_row, start_col, details = unpack(info)
 			local tangled_it
@@ -75,13 +78,28 @@ function M.attach(buf)
 			end
 
 
+			if details.end_row and details.end_row ~= start_row then
+				return true
+			end
+
+			if start_row == 8 then
+				local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
+				vim.schedule(function()
+					print(vim.inspect(lines))
+				end)
+			end
+
 			if start_row then
 				local ns_id = details.ns_id
 				details.ns_id = nil
 				vim.api.nvim_buf_set_extmark(buf, ns_id, start_row, start_col, details)
 			end
 	    return true
-	  end
+	  end,
+		on_clear_namespace = function(_, _, ns_id, line_start, line_end)
+			vim.api.nvim_buf_clear_namespace(buf, ns_id, line_start, line_end)
+			return true
+		end
 	})
 
 	local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
@@ -100,7 +118,6 @@ function M.attach(buf)
 		end
 
 		vim.api.nvim_buf_set_lines(scratch, 0, -1, true, lines)
-
 
 		buf_fn = ntangle.get_origin(filename, tangled.asm, name)
 
@@ -162,11 +179,46 @@ function M.attach(buf)
 
 	vim.treesitter.highlighter._on_buf_list[buf] = { scratch }
 
+	vim.lsp.util._on_buf_line[buf] = function(buf, line)
+		local tangled = tangled_content[buf]
+		local jumplines = {}
+		for part in ntangle.linkedlist.iter(tangled.parts_ll) do
+			local part_lnum = 0
+			local it = part.start_part
+			while it and it ~= part.end_part do
+				if it.data.linetype ~= ntangle.LineType.SENTINEL then
+					if part_lnum == line then
+						jumplines = it.data.tangled
+						break
+					end
+					part_lnum = part_lnum + 1
+				end
+				it = it.next
+			end
+
+			if jumplines then break end
+		end
+
+		if #jumplines >= 1 then
+			local jumpline = jumplines[1]
+			if jumpline.data.lnum then
+				return scratch, jumpline.data.lnum
+			else
+				return nil, nil
+			end
+
+		else
+			return nil, nil
+		end
+
+	end
+
+	vim.lsp.util._on_buf[buf] = scratch
 	vim.bo[scratch].filetype = "cpp"
 
 
 	vim.api.nvim_buf_attach(buf, false, {
-		on_bytes = vim.schedule_wrap(function(_, _, _, start_row, start_col, start_byte, old_end_row, old_end_col, old_end_byte, new_end_row, new_end_col, new_end_byte)
+		on_bytes = function(_, _, _, start_row, start_col, start_byte, old_end_row, old_end_col, old_end_byte, new_end_row, new_end_col, new_end_byte)
 			local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
 
 			local filename = vim.api.nvim_buf_get_name(buf)
@@ -183,7 +235,6 @@ function M.attach(buf)
 				end
 
 				vim.api.nvim_buf_set_lines(scratch, 0, -1, true, lines)
-
 
 				buf_fn = ntangle.get_origin(filename, tangled.asm, name)
 
@@ -210,7 +261,8 @@ function M.attach(buf)
 			local hl = vim.treesitter.highlighter.active[scratch]
 			hl.tree:parse()
 
-		end)
+
+		end
 	})
 
 end

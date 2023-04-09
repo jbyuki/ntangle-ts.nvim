@@ -9,6 +9,7 @@ function M.attach(buf)
 	@fill_scratch_with_tangled_content
 	@setup_scratch_filename
 	@setup_highlight_indirection
+	@setup_lsp_indirection
 	@setup_filetype
 
 	@register_on_bytes_callback
@@ -66,7 +67,6 @@ end
 
 vim.api.nvim_buf_set_lines(scratch, 0, -1, true, lines)
 
-
 @attach_variables+=
 local buf_fn
 
@@ -89,10 +89,10 @@ tangled_content[buf] = tangled
 
 @register_on_bytes_callback+=
 vim.api.nvim_buf_attach(buf, false, {
-	on_bytes = vim.schedule_wrap(function(_, _, _, start_row, start_col, start_byte, old_end_row, old_end_col, old_end_byte, new_end_row, new_end_col, new_end_byte)
+	on_bytes = function(_, _, _, start_row, start_col, start_byte, old_end_row, old_end_col, old_end_byte, new_end_row, new_end_col, new_end_byte)
 		@fill_scratch_with_tangled_content
 		@reparse_attached_buffer
-	end)
+	end
 })
 
 @augment_tangled_with_lnum+=
@@ -156,9 +156,23 @@ end
 @extmark_callback+=
 vim.api.nvim_buf_attach(scratch, 0, {
   on_extmark = function(_, _, info)
+		-- vim.schedule(function()
+			-- print(vim.inspect(info))
+		-- end)
 		local tangled = tangled_content[buf]
 		local start_row, start_col, details = unpack(info)
 		@convert_back_to_untangled_in_tangled
+
+		if details.end_row and details.end_row ~= start_row then
+			return true
+		end
+
+		if start_row == 8 then
+			local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, true)
+			vim.schedule(function()
+				print(vim.inspect(lines))
+			end)
+		end
 
 		if start_row then
 			local ns_id = details.ns_id
@@ -166,7 +180,11 @@ vim.api.nvim_buf_attach(scratch, 0, {
 			vim.api.nvim_buf_set_extmark(buf, ns_id, start_row, start_col, details)
 		end
     return true
-  end
+  end,
+	on_clear_namespace = function(_, _, ns_id, line_start, line_end)
+		vim.api.nvim_buf_clear_namespace(buf, ns_id, line_start, line_end)
+		return true
+	end
 })
 
 @setup_highlight_indirection+=
@@ -234,3 +252,13 @@ end
 local hl = vim.treesitter.highlighter.active[scratch]
 hl.tree:parse()
 
+
+@setup_lsp_indirection+=
+vim.lsp.util._on_buf_line[buf] = function(buf, line)
+	local tangled = tangled_content[buf]
+	@lookup_line_number_in_untangled
+	@if_associated_tangled_line_return
+	@otherwise_return_nil_buffer
+end
+
+vim.lsp.util._on_buf[buf] = scratch

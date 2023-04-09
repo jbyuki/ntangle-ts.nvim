@@ -204,7 +204,12 @@ function M.attach(buf)
 	end
 
 	vim.lsp.util._on_buf[buf] = scratch
+
 	vim.bo[scratch].filetype = "cpp"
+
+	local opts = { buffer = buf }
+	vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, opts)
+	vim.keymap.set('n', 'K', vim.lsp.buf.hover, opts)
 
 
 	vim.api.nvim_buf_attach(buf, false, {

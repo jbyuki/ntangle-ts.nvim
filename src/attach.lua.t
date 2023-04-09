@@ -11,6 +11,7 @@ function M.attach(buf)
 	@setup_highlight_indirection
 	@setup_lsp_indirection
 	@setup_filetype
+	@attach_lsp_keymaps
 
 	@register_on_bytes_callback
 end
@@ -252,3 +253,9 @@ vim.lsp.util._on_buf_line[buf] = function(buf, line)
 end
 
 vim.lsp.util._on_buf[buf] = scratch
+
+@attach_lsp_keymaps+=
+local opts = { buffer = buf }
+vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, opts)
+vim.keymap.set('n', 'K', vim.lsp.buf.hover, opts)
+
